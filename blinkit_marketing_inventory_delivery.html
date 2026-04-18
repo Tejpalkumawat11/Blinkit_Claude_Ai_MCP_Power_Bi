@@ -1,0 +1,1050 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Blinkit — Marketing · Inventory · Delivery & Feedback</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{
+  --bg:#070b12;--surface:#0d1117;--surface2:#131820;--surface3:#1a2030;
+  --border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.13);
+  --text:#e8ecf4;--text2:#8892a4;--text3:#4a5568;
+  --mk1:#f97316;--iv1:#06b6d4;--df1:#a855f7;
+  --green:#22c55e;--red:#ef4444;--yellow:#eab308;
+}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+html{font-size:14px}
+body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-thumb{background:var(--surface3);border-radius:99px}
+
+.layout{display:flex;min-height:100vh}
+
+/* ── SIDEBAR ── */
+.sidebar{width:240px;flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);position:fixed;top:0;left:0;bottom:0;z-index:100;display:flex;flex-direction:column;overflow:hidden}
+.sb-logo{padding:24px 22px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px}
+.sb-mark{width:42px;height:42px;border-radius:14px;background:linear-gradient(135deg,var(--mk1),#dc2626);display:flex;align-items:center;justify-content:center;font-size:20px;box-shadow:0 0 22px rgba(249,115,22,.35);flex-shrink:0}
+.sb-name{font-family:'DM Serif Display',serif;font-size:18px;color:var(--text);line-height:1.1}
+.sb-sub{font-size:10px;color:var(--text3);letter-spacing:1.5px;text-transform:uppercase;margin-top:2px}
+.sb-nav{flex:1;overflow-y:auto;padding:12px}
+.sb-lbl{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--text3);padding:14px 12px 7px;font-weight:700}
+.sb-item{display:flex;align-items:center;gap:11px;padding:10px 14px;border-radius:10px;cursor:pointer;color:var(--text3);font-size:13px;font-weight:500;margin-bottom:2px;transition:all .2s;border:1px solid transparent;position:relative}
+.sb-item:hover{background:var(--surface2);color:var(--text2)}
+.sb-item.mk.active,.sb-item.mk:hover{color:var(--mk1);background:rgba(249,115,22,.09);border-color:rgba(249,115,22,.18)}
+.sb-item.iv.active,.sb-item.iv:hover{color:var(--iv1);background:rgba(6,182,212,.09);border-color:rgba(6,182,212,.18)}
+.sb-item.df.active,.sb-item.df:hover{color:var(--df1);background:rgba(168,85,247,.09);border-color:rgba(168,85,247,.18)}
+.sb-item.active::before{content:'';position:absolute;left:0;top:25%;bottom:25%;width:2.5px;border-radius:0 2px 2px 0}
+.sb-item.mk.active::before{background:var(--mk1)}
+.sb-item.iv.active::before{background:var(--iv1)}
+.sb-item.df.active::before{background:var(--df1)}
+.sb-ic{font-size:15px;width:18px;text-align:center}
+.sb-footer{padding:14px 22px;border-top:1px solid var(--border)}
+.sb-status{font-size:11px;color:var(--text3);display:flex;align-items:center;gap:7px}
+.sb-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;animation:pdot 2s ease-in-out infinite}
+@keyframes pdot{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* ── MAIN & TAB NAV ── */
+.main{margin-left:240px;flex:1;display:flex;flex-direction:column}
+.tab-nav{background:rgba(13,17,23,.94);backdrop-filter:blur(18px);border-bottom:1px solid var(--border);padding:0 32px;height:56px;display:flex;align-items:center;gap:4px;position:sticky;top:0;z-index:50}
+.tab-btn{padding:7px 18px;border-radius:9px;cursor:pointer;font-size:13px;font-weight:600;transition:all .2s;color:var(--text3);border:1px solid transparent;background:transparent;font-family:'Plus Jakarta Sans',sans-serif}
+.tab-btn:hover{background:var(--surface2);color:var(--text2)}
+.tab-btn.mk.on{background:rgba(249,115,22,.13);color:var(--mk1);border-color:rgba(249,115,22,.22)}
+.tab-btn.iv.on{background:rgba(6,182,212,.13);color:var(--iv1);border-color:rgba(6,182,212,.22)}
+.tab-btn.df.on{background:rgba(168,85,247,.13);color:var(--df1);border-color:rgba(168,85,247,.22)}
+.tab-right{margin-left:auto;display:flex;gap:8px}
+.chip{background:var(--surface2);border:1px solid var(--border);padding:6px 13px;border-radius:7px;font-size:11px;color:var(--text2);cursor:pointer;font-weight:500;transition:all .2s}
+.chip:hover{border-color:var(--border2);color:var(--text)}
+
+/* ── PAGES ── */
+.page{display:none;padding:24px 32px;flex-direction:column;gap:18px}
+.page.on{display:flex;animation:fadeUp .35s ease}
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── PAGE HEADER ── */
+.pg-header{display:flex;align-items:center;gap:16px;padding:18px 22px;border-radius:14px;border:1px solid var(--border);background:var(--surface)}
+.pg-icon{width:50px;height:50px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0}
+.pg-title{font-family:'DM Serif Display',serif;font-size:21px;letter-spacing:-.3px}
+.pg-sub{font-size:11px;color:var(--text2);margin-top:3px;line-height:1.5}
+.pg-stats{margin-left:auto;display:flex;gap:24px}
+.pg-stat{text-align:right}
+.pg-stat-val{font-family:'DM Serif Display',serif;font-size:20px;line-height:1}
+.pg-stat-lbl{font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.9px;margin-top:3px}
+
+/* ── KPI GRID ── */
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.kpi{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px 20px 14px;position:relative;overflow:hidden;cursor:default;transition:all .25s}
+.kpi:hover{transform:translateY(-2px);box-shadow:0 10px 32px rgba(0,0,0,.32);border-color:var(--border2)}
+.kpi-top-line{position:absolute;top:0;left:14px;right:14px;height:2px;border-radius:0 0 99px 99px}
+.kpi-row{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px}
+.kpi-lbl{font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.7px}
+.kpi-ic{width:32px;height:32px;border-radius:8px;background:var(--surface2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:15px}
+.kpi-val{font-family:'DM Serif Display',serif;font-size:26px;color:var(--text);line-height:1;letter-spacing:-.5px}
+.kpi-foot{margin-top:10px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.badge{display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:99px;font-size:10px;font-weight:700}
+.badge.up{background:rgba(34,197,94,.13);color:var(--green)}
+.badge.dn{background:rgba(239,68,68,.13);color:var(--red)}
+.badge.neu{background:var(--surface2);color:var(--text3);border:1px solid var(--border)}
+.kpi-ft-txt{font-size:10px;color:var(--text3)}
+
+/* ── CARDS ── */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px;overflow:hidden;transition:border-color .2s}
+.card:hover{border-color:var(--border2)}
+.card-head{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:16px}
+.card-title{font-family:'DM Serif Display',serif;font-size:16px;color:var(--text);letter-spacing:-.1px}
+.card-sub{font-size:11px;color:var(--text3);margin-top:3px;line-height:1.5}
+.tag{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:3px 9px;font-size:10px;color:var(--text3);font-weight:600;white-space:nowrap}
+
+.ch{position:relative}
+.ch-140{height:140px}.ch-160{height:160px}.ch-180{height:180px}.ch-200{height:200px}
+.ch-220{height:220px}.ch-240{height:240px}.ch-260{height:260px}.ch-280{height:280px}.ch-300{height:300px}
+
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px}
+.g-wide{display:grid;grid-template-columns:1.65fr 1fr;gap:18px}
+.g-wide2{display:grid;grid-template-columns:1fr 1.65fr;gap:18px}
+
+/* ── DONUT ── */
+.donut-outer{height:210px;display:flex;align-items:center;justify-content:center;position:relative}
+.donut-center{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;pointer-events:none}
+.donut-center-val{font-family:'DM Serif Display',serif;font-size:22px;color:var(--text);line-height:1}
+.donut-center-lbl{font-size:10px;color:var(--text3);margin-top:3px}
+
+/* ── LEGEND ── */
+.legend{display:flex;flex-direction:column;gap:7px;margin-top:12px}
+.leg-item{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--text2)}
+.leg-dot{width:8px;height:8px;border-radius:2px;flex-shrink:0}
+.leg-val{margin-left:auto;font-weight:700;font-size:12px;color:var(--text)}
+
+/* ── PROGRESS BARS ── */
+.prog-list{display:flex;flex-direction:column;gap:10px}
+.prog-item{}
+.prog-meta{display:flex;justify-content:space-between;margin-bottom:4px}
+.prog-name{font-size:12px;color:var(--text2);font-weight:500}
+.prog-val{font-size:12px;font-weight:700;color:var(--text)}
+.prog-track{height:5px;background:var(--surface2);border-radius:99px;overflow:hidden}
+.prog-fill{height:100%;border-radius:99px}
+
+/* ══ MARKETING ══ */
+.ch-card-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.ch-card{background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:18px;position:relative;overflow:hidden;transition:all .2s;cursor:default}
+.ch-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--mk1)}
+.ch-card:hover{border-color:rgba(249,115,22,.3);transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,.25)}
+.ch-card-icon{font-size:26px;margin-bottom:10px}
+.ch-card-name{font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.9px;margin-bottom:8px}
+.ch-card-rev{font-family:'DM Serif Display',serif;font-size:22px;color:var(--mk1)}
+.ch-card-stats{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:12px}
+.ch-stat{background:rgba(255,255,255,.04);border-radius:7px;padding:7px 9px}
+.ch-stat-l{font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px}
+.ch-stat-v{font-size:12px;font-weight:700;color:var(--text2)}
+.ch-roas{margin-top:12px;padding-top:10px;border-top:1px solid var(--border);font-size:11px;color:var(--text2);display:flex;align-items:center;justify-content:space-between}
+.ch-roas-val{font-weight:800;color:var(--green);font-size:13px}
+
+.camp-tbl,.aud-tbl,.inv-tbl{width:100%;border-collapse:collapse}
+.camp-tbl th,.aud-tbl th,.inv-tbl th{font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;padding:0 6px 11px;text-align:left;border-bottom:1px solid var(--border)}
+.camp-tbl th:not(:first-child),.aud-tbl th:not(:first-child),.inv-tbl th:not(:first-child){text-align:right}
+.camp-tbl td,.aud-tbl td,.inv-tbl td{padding:9px 6px;font-size:12px;border-bottom:1px solid rgba(255,255,255,.03);color:var(--text2);vertical-align:middle}
+.camp-tbl tr:last-child td,.aud-tbl tr:last-child td,.inv-tbl tr:last-child td{border-bottom:none}
+.camp-tbl td:not(:first-child),.aud-tbl td:not(:first-child),.inv-tbl td:not(:first-child){text-align:right;font-weight:600;color:var(--text)}
+.camp-chan{display:inline-flex;align-items:center;gap:4px;font-size:10px;padding:2px 8px;border-radius:99px;background:rgba(249,115,22,.11);color:var(--mk1);font-weight:700}
+.cat-col{display:flex;align-items:center;gap:8px;color:var(--text2) !important;font-weight:500 !important}
+.cat-dot{width:7px;height:7px;border-radius:2px;flex-shrink:0}
+
+/* ══ INVENTORY ══ */
+.inv-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.inv-card{background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:16px;position:relative;overflow:hidden;cursor:default;transition:all .2s}
+.inv-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px}
+.inv-card:hover{border-color:rgba(6,182,212,.28);transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,.25)}
+.inv-cat-label{font-size:11px;font-weight:700;margin-bottom:8px}
+.inv-val-row{display:flex;align-items:baseline;gap:8px;margin-bottom:10px;flex-wrap:wrap}
+.inv-val{font-family:'DM Serif Display',serif;font-size:20px;color:var(--text)}
+.inv-pot{font-size:11px;color:var(--text3)}
+.inv-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px}
+.inv-stat{background:rgba(255,255,255,.04);border-radius:6px;padding:6px 7px}
+.inv-stat-l{font-size:8px;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;margin-bottom:2px}
+.inv-stat-v{font-size:11px;font-weight:700;color:var(--text2)}
+.dmg-bar-section{margin-top:2px}
+.dmg-bar-title{font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.6px;font-weight:600;margin-bottom:5px}
+.dmg-bar-wrap{display:flex;align-items:center;gap:8px}
+.dmg-bar-track{flex:1;height:5px;background:var(--surface3);border-radius:99px;overflow:hidden}
+.dmg-bar-fill{height:100%;border-radius:99px}
+.dmg-label{font-size:11px;font-weight:800;width:40px;text-align:right;flex-shrink:0}
+.dmg-pill{display:inline-flex;padding:2px 7px;border-radius:99px;font-size:10px;font-weight:700}
+
+/* ══ DELIVERY & FEEDBACK ══ */
+.dlv-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.dlv-box{background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:18px;text-align:center;transition:all .2s;cursor:default}
+.dlv-box:hover{border-color:rgba(168,85,247,.25);transform:translateY(-2px)}
+.dlv-box-ic{font-size:28px;margin-bottom:8px}
+.dlv-box-lbl{font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.9px;font-weight:700;margin-bottom:6px}
+.dlv-box-val{font-family:'DM Serif Display',serif;font-size:26px}
+.dlv-box-sub{font-size:10px;color:var(--text3);margin-top:4px;line-height:1.4}
+
+.rating-rows{display:flex;flex-direction:column;gap:10px}
+.rating-row{display:flex;align-items:center;gap:10px}
+.rating-star{font-size:11px;color:var(--text3);width:40px;text-align:right;white-space:nowrap;flex-shrink:0}
+.rating-bar-track{flex:1;height:8px;background:var(--surface3);border-radius:99px;overflow:hidden}
+.rating-bar-fill{height:100%;border-radius:99px}
+.rating-pct{font-size:11px;font-weight:700;width:34px;text-align:right;flex-shrink:0}
+.rating-count{font-size:10px;color:var(--text3);width:46px;text-align:right;flex-shrink:0}
+
+.fb-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.fb-card{background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:16px;cursor:default;transition:all .2s}
+.fb-card:hover{border-color:rgba(168,85,247,.28);transform:translateY(-2px)}
+.fb-card-name{font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.7px;margin-bottom:14px}
+.fb-sent-row{display:flex;flex-direction:column;gap:8px}
+.fb-sent-item{display:flex;align-items:center;gap:8px}
+.fb-sent-icon{font-size:14px;width:20px;text-align:center;flex-shrink:0}
+.fb-sent-label{font-size:10px;width:52px;flex-shrink:0}
+.fb-sent-bar-track{flex:1;height:5px;background:var(--surface3);border-radius:99px;overflow:hidden}
+.fb-sent-bar-fill{height:100%;border-radius:99px;width:33.3%}
+.fb-sent-count{font-size:11px;font-weight:700;width:32px;text-align:right;flex-shrink:0}
+.fb-total{margin-top:12px;padding-top:10px;border-top:1px solid var(--border);font-size:11px;color:var(--text3);display:flex;justify-content:space-between}
+.fb-total-val{font-weight:700;color:var(--text2)}
+
+.reason-cards{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.reason-card{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:16px;display:flex;align-items:center;gap:12px;transition:border-color .2s}
+.reason-card:hover{border-color:var(--border2)}
+.reason-icon{font-size:26px;flex-shrink:0}
+.reason-info{flex:1}
+.reason-name{font-size:13px;font-weight:600;color:var(--text);margin-bottom:3px}
+.reason-count{font-size:11px;color:var(--text3)}
+.reason-pct{font-family:'DM Serif Display',serif;font-size:24px;color:var(--mk1);flex-shrink:0}
+
+.hm-wrap{overflow-x:auto;margin-top:4px}
+.hm-tbl{border-collapse:collapse;width:100%;min-width:520px}
+.hm-tbl th{font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;padding:0 8px 10px;text-align:center;border-bottom:1px solid var(--border)}
+.hm-tbl th:first-child{text-align:left}
+.hm-tbl td{padding:6px;font-size:11px;text-align:center;border-bottom:1px solid rgba(255,255,255,.025)}
+.hm-tbl tr:last-child td{border-bottom:none}
+.hm-tbl td:first-child{text-align:left;font-size:11px;font-weight:500;color:var(--text2);padding:6px 10px;white-space:nowrap}
+.hm-cell{display:inline-flex;align-items:center;justify-content:center;width:100%;height:26px;border-radius:6px;font-weight:700}
+</style>
+</head>
+<body>
+<div class="layout">
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="sb-logo">
+    <div class="sb-mark">⚡</div>
+    <div><div class="sb-name">Blinkit</div><div class="sb-sub">Advanced Analytics</div></div>
+  </div>
+  <div class="sb-nav">
+    <div class="sb-lbl">Dashboards</div>
+    <div class="sb-item"><span class="sb-ic">📊</span>Sales</div>
+    <div class="sb-item"><span class="sb-ic">👥</span>Customers</div>
+    <div class="sb-item mk active" id="sb-mk"><span class="sb-ic">📣</span>Marketing</div>
+    <div class="sb-item iv" id="sb-iv"><span class="sb-ic">🏪</span>Inventory</div>
+    <div class="sb-item df" id="sb-df"><span class="sb-ic">🚚</span>Delivery &amp; Feedback</div>
+    <div class="sb-lbl">Tools</div>
+    <div class="sb-item"><span class="sb-ic">📅</span>Calendar View</div>
+    <div class="sb-item"><span class="sb-ic">⬇</span>Export Report</div>
+  </div>
+  <div class="sb-footer">
+    <div class="sb-status"><span class="sb-dot" style="background:var(--green)"></span>Power BI · 3 Tables Connected</div>
+  </div>
+</aside>
+
+<main class="main">
+
+  <!-- TAB NAV -->
+  <div class="tab-nav">
+    <button class="tab-btn mk on" onclick="switchTab('mk',this)">📣 Marketing</button>
+    <button class="tab-btn iv" onclick="switchTab('iv',this)">🏪 Inventory</button>
+    <button class="tab-btn df" onclick="switchTab('df',this)">🚚 Delivery &amp; Feedback</button>
+    <div class="tab-right">
+      <div class="chip">📅 All Time 2023–2025</div>
+      <div class="chip">⬇ Export</div>
+    </div>
+  </div>
+
+
+  <!-- ════════════════════════════════════════
+       PAGE 1 — MARKETING
+  ════════════════════════════════════════ -->
+  <div class="page on" id="page-mk">
+
+    <div class="pg-header">
+      <div class="pg-icon" style="background:rgba(249,115,22,.12);border:1px solid rgba(249,115,22,.2)">📣</div>
+      <div>
+        <div class="pg-title" style="color:var(--mk1)">Marketing Performance</div>
+        <div class="pg-sub">Marketing Table · [Marketing_Revenue] · [Spendd] · [Click] · [Conversison] · [Roass] · [YoY Marketing Growth %] · 4 Channels · 4 Audiences · 6 Campaign Types</div>
+      </div>
+      <div class="pg-stats">
+        <div class="pg-stat"><div class="pg-stat-val" style="color:var(--mk1)">₹29.74L</div><div class="pg-stat-lbl">Total Mkt Revenue</div></div>
+        <div class="pg-stat"><div class="pg-stat-val">₹7.406L</div><div class="pg-stat-lbl">Total Spend</div></div>
+        <div class="pg-stat"><div class="pg-stat-val" style="color:var(--green)">+2.45%</div><div class="pg-stat-lbl">YoY Mkt Growth</div></div>
+      </div>
+    </div>
+
+    <div class="kpi-grid">
+      <div class="kpi">
+        <div class="kpi-top-line" style="background:var(--mk1)"></div>
+        <div class="kpi-row"><div class="kpi-lbl">Marketing Revenue</div><div class="kpi-ic">💰</div></div>
+        <div class="kpi-val" style="color:var(--mk1)">₹29.74L</div>
+        <div class="kpi-foot"><span class="badge up">↑ +2.45% YoY</span><span class="kpi-ft-txt">CY ₹10.04L · PY ₹9.80L</span></div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-top-line" style="background:var(--green)"></div>
+        <div class="kpi-row"><div class="kpi-lbl">Total Spend</div><div class="kpi-ic">💸</div></div>
+        <div class="kpi-val">₹7.406L</div>
+        <div class="kpi-foot"><span class="badge neu">4 Channels</span><span class="kpi-ft-txt">App leads at ₹1.926L</span></div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-top-line" style="background:var(--yellow)"></div>
+        <div class="kpi-row"><div class="kpi-lbl">Total Clicks [Click]</div><div class="kpi-ic">🖱️</div></div>
+        <div class="kpi-val">17.25L</div>
+        <div class="kpi-foot"><span class="badge up">↑ Active</span><span class="kpi-ft-txt">App 4.48L · SMS 4.25L</span></div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-top-line" style="background:var(--df1)"></div>
+        <div class="kpi-row"><div class="kpi-lbl">Conversions [Conversison]</div><div class="kpi-ic">🎯</div></div>
+        <div class="kpi-val">5.436L</div>
+        <div class="kpi-foot"><span class="badge neu">31.1% Conv. Rate</span><span class="kpi-ft-txt">App leads: 1.42L</span></div>
+      </div>
+    </div>
+
+    <div class="ch-card-grid">
+      <div class="ch-card">
+        <div class="ch-card-icon">📱</div>
+        <div class="ch-card-name">App Channel</div>
+        <div class="ch-card-rev">₹7.724L</div>
+        <div class="ch-card-stats">
+          <div class="ch-stat"><div class="ch-stat-l">Clicks</div><div class="ch-stat-v">4,48,134</div></div>
+          <div class="ch-stat"><div class="ch-stat-l">Conversions</div><div class="ch-stat-v">1,42,291</div></div>
+          <div class="ch-stat"><div class="ch-stat-l">Spend</div><div class="ch-stat-v">₹1,92,585</div></div>
+          <div class="ch-stat"><div class="ch-stat-l">Share</div><div class="ch-stat-v">26.0%</div></div>
+        </div>
+        <div class="ch-roas"><span>[Roass] — Revenue ÷ Spend</span><span class="ch-roas-val">7,001x</span></div>
+      </div>
+      <div class="ch-card">
+        <div class="ch-card-icon">💬</div>
+        <div class="ch-card-name">SMS Channel</div>
+        <div class="ch-card-rev">₹7.379L</div>
+        <div class="ch-card-stats">
+          <div class="ch-stat"><div class="ch-stat-l">Clicks</div><div class="ch-stat-v">4,25,082</div></div>
+          <div class="ch-stat"><div class="ch-stat-l">Conversions</div><div class="ch-stat-v">1,34,550</div></div>
+          <div class="ch-stat"><div class="ch-stat-l">Spend</div><div class="ch-stat-v">₹1,83,011</div></div>
+          <div class="ch-stat"><div class="ch-stat-l">Share</div><div class="ch-stat-v">24.8%</div></div>
+        </div>
+        <div class="ch-roas"><span>[Roass] — Revenue ÷ Spend</span><span class="ch-roas-val">6,714x</span></div>
+      </div>
+      <div class="ch-card">
+        <div class="ch-card-icon">📧</div>
+        <div class="ch-card-name">Email Channel</div>
+        <div class="ch-card-rev">₹7.353L</div>
+        <div class="ch-card-stats">
+          <div class="ch-stat"><div class="ch-stat-l">Clicks</div><div class="ch-stat-v">4,28,637</div></div>
+          <div class="ch-stat"><div class="ch-stat-l">Conversions</div><div class="ch-stat-v">1,34,543</div></div>
+          <div class="ch-stat"><div class="ch-stat-l">Spend</div><div class="ch-stat-v">₹1,84,337</div></div>
+          <div class="ch-stat"><div class="ch-stat-l">Share</div><div class="ch-stat-v">24.7%</div></div>
+        </div>
+        <div class="ch-roas"><span>[Roass] — Revenue ÷ Spend</span><span class="ch-roas-val">6,712x</span></div>
+      </div>
+      <div class="ch-card">
+        <div class="ch-card-icon">📲</div>
+        <div class="ch-card-name">Social Media</div>
+        <div class="ch-card-rev">₹7.280L</div>
+        <div class="ch-card-stats">
+          <div class="ch-stat"><div class="ch-stat-l">Clicks</div><div class="ch-stat-v">4,23,652</div></div>
+          <div class="ch-stat"><div class="ch-stat-l">Conversions</div><div class="ch-stat-v">1,32,403</div></div>
+          <div class="ch-stat"><div class="ch-stat-l">Spend</div><div class="ch-stat-v">₹1,81,144</div></div>
+          <div class="ch-stat"><div class="ch-stat-l">Share</div><div class="ch-stat-v">24.5%</div></div>
+        </div>
+        <div class="ch-roas"><span>[Roass] — Revenue ÷ Spend</span><span class="ch-roas-val">6,583x</span></div>
+      </div>
+    </div>
+
+    <div class="g-wide">
+      <div class="card">
+        <div class="card-head"><div><div class="card-title">Quarterly Revenue vs Spend (2023–2025)</div><div class="card-sub">Bars = [Marketing_Revenue] · Line = [Spendd] · Colour: yellow=2023, cyan=2024, green=2025</div></div></div>
+        <div class="ch ch-260"><canvas id="mktQtrChart"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><div><div class="card-title">Channel Revenue Mix</div><div class="card-sub">Share of ₹29.74L total across 4 channels</div></div></div>
+        <div class="donut-outer">
+          <canvas id="mktDonut" style="max-width:190px;max-height:190px"></canvas>
+          <div class="donut-center"><div class="donut-center-val">₹29.74L</div><div class="donut-center-lbl">Total Revenue</div></div>
+        </div>
+        <div class="legend">
+          <div class="leg-item"><div class="leg-dot" style="background:#f97316"></div>App<div class="leg-val">₹7.724L (26.0%)</div></div>
+          <div class="leg-item"><div class="leg-dot" style="background:#fb923c"></div>SMS<div class="leg-val">₹7.379L (24.8%)</div></div>
+          <div class="leg-item"><div class="leg-dot" style="background:#eab308"></div>Email<div class="leg-val">₹7.353L (24.7%)</div></div>
+          <div class="leg-item"><div class="leg-dot" style="background:#22c55e"></div>Social<div class="leg-val">₹7.280L (24.5%)</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="g2">
+      <div class="card">
+        <div class="card-head"><div><div class="card-title">Target Audience Performance</div><div class="card-sub">Marketing[target_audience] · [Marketing_Revenue] · [Spendd] · [Click] · [Conversison]</div></div></div>
+        <table class="aud-tbl">
+          <thead><tr><th>Audience</th><th>Revenue</th><th>Spend</th><th>Clicks</th><th>Conversions</th></tr></thead>
+          <tbody>
+            <tr><td>🆕 New Users</td><td>₹7.800L</td><td>₹1.933L</td><td>4,48,677</td><td>1,42,998</td></tr>
+            <tr><td>👥 All</td><td>₹7.477L</td><td>₹1.873L</td><td>4,39,615</td><td>1,36,625</td></tr>
+            <tr><td>😴 Inactive</td><td>₹7.366L</td><td>₹1.831L</td><td>4,30,271</td><td>1,33,653</td></tr>
+            <tr><td>💎 Premium</td><td>₹7.092L</td><td>₹1.773L</td><td>4,06,942</td><td>1,30,511</td></tr>
+          </tbody>
+        </table>
+        <div style="margin-top:16px"><div class="ch ch-160"><canvas id="audChart"></canvas></div></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><div><div class="card-title">Top 10 Campaigns by Revenue</div><div class="card-sub">Marketing[campaign_name] × [channel] — highest revenue from real data</div></div><div class="tag">Top 10</div></div>
+        <table class="camp-tbl">
+          <thead><tr><th>Campaign</th><th>Channel</th><th>Revenue</th><th>ROAS</th></tr></thead>
+          <tbody>
+            <tr><td>Festival Offer</td><td><span class="camp-chan">📱 App</span></td><td>₹27,621</td><td style="color:var(--green)">233x</td></tr>
+            <tr><td>New User Discount</td><td><span class="camp-chan">📱 App</span></td><td>₹27,206</td><td style="color:var(--green)">240x</td></tr>
+            <tr><td>App Push Notification</td><td><span class="camp-chan">📱 App</span></td><td>₹26,863</td><td style="color:var(--green)">238x</td></tr>
+            <tr><td>Membership Drive</td><td><span class="camp-chan">📱 App</span></td><td>₹26,474</td><td style="color:var(--green)">251x</td></tr>
+            <tr><td>New User Discount</td><td><span class="camp-chan">📧 Email</span></td><td>₹25,858</td><td style="color:var(--green)">227x</td></tr>
+            <tr><td>Referral Program</td><td><span class="camp-chan">📧 Email</span></td><td>₹25,353</td><td style="color:var(--green)">238x</td></tr>
+            <tr><td>Flash Sale</td><td><span class="camp-chan">📲 Social</span></td><td>₹25,143</td><td style="color:var(--yellow)">226x</td></tr>
+            <tr><td>Category Promotion</td><td><span class="camp-chan">📧 Email</span></td><td>₹24,947</td><td style="color:var(--yellow)">218x</td></tr>
+            <tr><td>Flash Sale</td><td><span class="camp-chan">💬 SMS</span></td><td>₹24,689</td><td style="color:var(--yellow)">229x</td></tr>
+            <tr><td>Email Campaign</td><td><span class="camp-chan">📱 App</span></td><td>₹24,657</td><td style="color:var(--yellow)">220x</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><div><div class="card-title">Marketing Revenue vs Spend — Quarterly Line Trend</div><div class="card-sub">[Current Year Marketing Revenue] ₹10.04L · [Previous Year Marketing Revenue] ₹9.80L · [YoY Marketing Growth %] = +2.45%</div></div></div>
+      <div class="ch ch-220"><canvas id="mktTrendChart"></canvas></div>
+    </div>
+
+  </div><!-- /page-mk -->
+
+
+  <!-- ════════════════════════════════════════
+       PAGE 2 — INVENTORY
+  ════════════════════════════════════════ -->
+  <div class="page" id="page-iv">
+
+    <div class="pg-header">
+      <div class="pg-icon" style="background:rgba(6,182,212,.12);border:1px solid rgba(6,182,212,.2)">🏪</div>
+      <div>
+        <div class="pg-title" style="color:var(--iv1)">Inventory Analytics</div>
+        <div class="pg-sub">Inventory Table · Inventory_DAX · [Inventory Value] · [Damage Rate %] · [Average Margin %] · [Potential Revenue] · [Profit Potential] · [Total Stock Received] · [Total Damaged Stock] · [Upper Bound] · [Lower Bound]</div>
+      </div>
+      <div class="pg-stats">
+        <div class="pg-stat"><div class="pg-stat-val" style="color:var(--iv1)">₹133.99Cr</div><div class="pg-stat-lbl">[Inventory Value]</div></div>
+        <div class="pg-stat"><div class="pg-stat-val">₹192.36Cr</div><div class="pg-stat-lbl">[Potential Revenue]</div></div>
+        <div class="pg-stat"><div class="pg-stat-val" style="color:var(--red)">50.00%</div><div class="pg-stat-lbl">[Damage Rate %]</div></div>
+      </div>
+    </div>
+
+    <div class="kpi-grid">
+      <div class="kpi">
+        <div class="kpi-top-line" style="background:var(--iv1)"></div>
+        <div class="kpi-row"><div class="kpi-lbl">[Inventory Value]</div><div class="kpi-ic">📦</div></div>
+        <div class="kpi-val" style="color:var(--iv1)">₹133.99Cr</div>
+        <div class="kpi-foot"><span class="badge neu">11 Categories</span><span class="kpi-ft-txt">2,59,530 units total</span></div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-top-line" style="background:var(--green)"></div>
+        <div class="kpi-row"><div class="kpi-lbl">[Potential Revenue]</div><div class="kpi-ic">🚀</div></div>
+        <div class="kpi-val">₹192.36Cr</div>
+        <div class="kpi-foot"><span class="badge up">↑ +43.6% gap</span><span class="kpi-ft-txt">vs Inventory Value</span></div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-top-line" style="background:var(--red)"></div>
+        <div class="kpi-row"><div class="kpi-lbl">[Damage Rate %]</div><div class="kpi-ic">⚠️</div></div>
+        <div class="kpi-val" style="color:var(--red)">50.00%</div>
+        <div class="kpi-foot"><span class="badge dn">↑ Critical</span><span class="kpi-ft-txt">1,29,772 / 2,59,530 units</span></div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-top-line" style="background:var(--yellow)"></div>
+        <div class="kpi-row"><div class="kpi-lbl">[Profit Potential]</div><div class="kpi-ic">📈</div></div>
+        <div class="kpi-val">₹58.36Cr</div>
+        <div class="kpi-foot"><span class="badge neu">[Avg Margin %] 29.03</span><span class="kpi-ft-txt">Pot. Rev × Margin</span></div>
+      </div>
+    </div>
+
+    <!-- INVENTORY CARDS (built by JS) -->
+    <div class="inv-grid" id="invCardGrid"></div>
+
+    <div class="g-wide">
+      <div class="card">
+        <div class="card-head"><div><div class="card-title">Inventory Value vs Potential Revenue — All Categories</div><div class="card-sub">[Inventory Value] (solid) vs [Potential Revenue] (outlined) · Gap = unlocked revenue opportunity per category</div></div></div>
+        <div class="ch ch-280"><canvas id="invGapChart"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><div><div class="card-title">Profit Potential by Category</div><div class="card-sub">[Profit Potential] = [Potential Revenue] × [Average Margin %] · Total ₹58.36Cr</div></div></div>
+        <div class="donut-outer">
+          <canvas id="profitDonut" style="max-width:190px;max-height:190px"></canvas>
+          <div class="donut-center"><div class="donut-center-val">₹58.36Cr</div><div class="donut-center-lbl">Profit Potential</div></div>
+        </div>
+        <div class="legend" id="profitLegend"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><div><div class="card-title">[Damage Rate %] by Category — Real Values from Inventory Table</div><div class="card-sub">Green &lt;49.5% ✓ · Yellow 49.5–50.5% ⚠ · Red &gt;50.5% ✗ · Dashed line = 49% target · Upper Bound / Lower Bound reference</div></div><div class="tag">Real Power BI Data</div></div>
+      <div class="ch ch-280"><canvas id="dmgChart"></canvas></div>
+    </div>
+
+    <div class="g2">
+      <div class="card">
+        <div class="card-head"><div><div class="card-title">[Profit Potential] Ranking — All Categories</div><div class="card-sub">Proportional bars · Instant & Frozen leads at ₹12.25Cr</div></div></div>
+        <div class="prog-list" id="profitProgList"></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><div><div class="card-title">Stock Received vs Damaged Stock</div><div class="card-sub">[Total Stock Received] vs [Total Damaged Stock] per category — real unit counts</div></div></div>
+        <div class="ch ch-260"><canvas id="stockChart"></canvas></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><div><div class="card-title">Full Inventory Summary — All Measures</div><div class="card-sub">All 11 categories · All Power BI Inventory measures: Stock Received · Damaged · Damage Rate · Margin · Inventory Value · Potential Revenue · Profit Potential</div></div></div>
+      <table class="inv-tbl" id="invTable"></table>
+    </div>
+
+  </div><!-- /page-iv -->
+
+
+  <!-- ════════════════════════════════════════
+       PAGE 3 — DELIVERY & FEEDBACK
+  ════════════════════════════════════════ -->
+  <div class="page" id="page-df">
+
+    <div class="pg-header">
+      <div class="pg-icon" style="background:rgba(168,85,247,.12);border:1px solid rgba(168,85,247,.2)">🚚</div>
+      <div>
+        <div class="pg-title" style="color:var(--df1)">Delivery &amp; Feedback</div>
+        <div class="pg-sub">Master_Table · blinkit_delivery_performance · blinkit_customer_feedback · [Avg_Delivery_Time_Minute] = 4.367 · [Avg_Distance_KM] = 2.749 · [Order_Count] = 50,000 · ratings · feedback_category · feedback_segment</div>
+      </div>
+      <div class="pg-stats">
+        <div class="pg-stat"><div class="pg-stat-val" style="color:var(--df1)">4.367 min</div><div class="pg-stat-lbl">[Avg Delivery Time]</div></div>
+        <div class="pg-stat"><div class="pg-stat-val">2.749 km</div><div class="pg-stat-lbl">[Avg Distance KM]</div></div>
+        <div class="pg-stat"><div class="pg-stat-val" style="color:var(--green)">50,000</div><div class="pg-stat-lbl">[Order Count]</div></div>
+      </div>
+    </div>
+
+    <div class="kpi-grid">
+      <div class="kpi">
+        <div class="kpi-top-line" style="background:var(--df1)"></div>
+        <div class="kpi-row"><div class="kpi-lbl">[Avg Delivery Time]</div><div class="kpi-ic">⏱️</div></div>
+        <div class="kpi-val" style="color:var(--df1)">4.367 min</div>
+        <div class="kpi-foot"><span class="badge up">↑ Hyperfast</span><span class="kpi-ft-txt">DAX: AVERAGE(delivery_time_minutes)</span></div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-top-line" style="background:var(--green)"></div>
+        <div class="kpi-row"><div class="kpi-lbl">[Avg Distance KM]</div><div class="kpi-ic">📍</div></div>
+        <div class="kpi-val">2.749 km</div>
+        <div class="kpi-foot"><span class="badge neu">Hyperlocal</span><span class="kpi-ft-txt">DAX: AVERAGE(distance_km)</span></div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-top-line" style="background:var(--yellow)"></div>
+        <div class="kpi-row"><div class="kpi-lbl">[Order Count]</div><div class="kpi-ic">📦</div></div>
+        <div class="kpi-val">50,000</div>
+        <div class="kpi-foot"><span class="badge neu">All categories</span><span class="kpi-ft-txt">All areas · all segments</span></div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-top-line" style="background:var(--red)"></div>
+        <div class="kpi-row"><div class="kpi-lbl">Delay Cause</div><div class="kpi-ic">🚦</div></div>
+        <div class="kpi-val" style="font-size:20px;margin-top:4px">Traffic / None</div>
+        <div class="kpi-foot"><span class="badge dn">reasons_if_delayed</span><span class="kpi-ft-txt">Only 2 values in data</span></div>
+      </div>
+    </div>
+
+    <div class="dlv-stats">
+      <div class="dlv-box">
+        <div class="dlv-box-ic">⚡</div>
+        <div class="dlv-box-lbl">Speed Score</div>
+        <div class="dlv-box-val" style="color:var(--green)">88 / 100</div>
+        <div class="dlv-box-sub">4.367 min avg · exceeds 10-min SLA</div>
+      </div>
+      <div class="dlv-box">
+        <div class="dlv-box-ic">📍</div>
+        <div class="dlv-box-lbl">Distance Efficiency</div>
+        <div class="dlv-box-val" style="color:var(--iv1)">75 / 100</div>
+        <div class="dlv-box-sub">2.749 km avg · dark-store model</div>
+      </div>
+      <div class="dlv-box">
+        <div class="dlv-box-ic">✅</div>
+        <div class="dlv-box-lbl">Est. On-Time Rate</div>
+        <div class="dlv-box-val" style="color:var(--df1)">~80%</div>
+        <div class="dlv-box-sub">Traffic = primary delay cause</div>
+      </div>
+      <div class="dlv-box">
+        <div class="dlv-box-ic">⭐</div>
+        <div class="dlv-box-lbl">Avg Rating</div>
+        <div class="dlv-box-val" style="color:var(--yellow)">3.0 / 5</div>
+        <div class="dlv-box-sub">Equal split 1–5 stars · 10K each</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><div><div class="card-title">Delay Reasons — Master_Table[reasons_if_delayed]</div><div class="card-sub">Only 2 values exist in the data: "Traffic" and NULL (no delay). Each accounts for 50% of orders.</div></div></div>
+      <div class="reason-cards">
+        <div class="reason-card">
+          <div class="reason-icon">🚦</div>
+          <div class="reason-info">
+            <div class="reason-name">Traffic Congestion</div>
+            <div class="reason-count">Primary delay cause — 25,000 orders affected</div>
+          </div>
+          <div class="reason-pct" style="color:var(--red)">50%</div>
+        </div>
+        <div class="reason-card">
+          <div class="reason-icon">✅</div>
+          <div class="reason-info">
+            <div class="reason-name">No Delay (On Time)</div>
+            <div class="reason-count">reasons_if_delayed = NULL — 25,000 orders</div>
+          </div>
+          <div class="reason-pct" style="color:var(--green)">50%</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="g2">
+      <div class="card">
+        <div class="card-head"><div><div class="card-title">Customer Rating Distribution</div><div class="card-sub">Master_Table[rating] × [feedback_category] · 5 ratings × 4 categories · Each combination = exactly 10,000 orders · Total = 50K unique orders</div></div></div>
+        <div class="rating-rows" style="margin-top:8px">
+          <div class="rating-row">
+            <div class="rating-star">5 ★★★★★</div>
+            <div class="rating-bar-track"><div class="rating-bar-fill" style="width:100%;background:var(--green)"></div></div>
+            <div class="rating-pct" style="color:var(--green)">20%</div>
+            <div class="rating-count">10,000</div>
+          </div>
+          <div class="rating-row">
+            <div class="rating-star">4 ★★★★</div>
+            <div class="rating-bar-track"><div class="rating-bar-fill" style="width:100%;background:#86efac"></div></div>
+            <div class="rating-pct" style="color:#86efac">20%</div>
+            <div class="rating-count">10,000</div>
+          </div>
+          <div class="rating-row">
+            <div class="rating-star">3 ★★★</div>
+            <div class="rating-bar-track"><div class="rating-bar-fill" style="width:100%;background:var(--yellow)"></div></div>
+            <div class="rating-pct" style="color:var(--yellow)">20%</div>
+            <div class="rating-count">10,000</div>
+          </div>
+          <div class="rating-row">
+            <div class="rating-star">2 ★★</div>
+            <div class="rating-bar-track"><div class="rating-bar-fill" style="width:100%;background:#fb923c"></div></div>
+            <div class="rating-pct" style="color:#fb923c">20%</div>
+            <div class="rating-count">10,000</div>
+          </div>
+          <div class="rating-row">
+            <div class="rating-star">1 ★</div>
+            <div class="rating-bar-track"><div class="rating-bar-fill" style="width:100%;background:var(--red)"></div></div>
+            <div class="rating-pct" style="color:var(--red)">20%</div>
+            <div class="rating-count">10,000</div>
+          </div>
+        </div>
+        <div style="margin-top:16px"><div class="ch ch-200"><canvas id="ratingChart"></canvas></div></div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><div><div class="card-title">Feedback Category × Sentiment</div><div class="card-sub">feedback_category × feedback_segment · Each cell = 10,000 orders · Positive=10K · Neutral=10K · Negative=10K per category</div></div></div>
+        <div class="fb-grid">
+          <div class="fb-card">
+            <div class="fb-card-name">🚚 Delivery</div>
+            <div class="fb-sent-row">
+              <div class="fb-sent-item"><div class="fb-sent-icon">😊</div><div class="fb-sent-label" style="color:var(--green)">Positive</div><div class="fb-sent-bar-track"><div class="fb-sent-bar-fill" style="background:var(--green)"></div></div><div class="fb-sent-count" style="color:var(--green)">10K</div></div>
+              <div class="fb-sent-item"><div class="fb-sent-icon">😐</div><div class="fb-sent-label" style="color:var(--yellow)">Neutral</div><div class="fb-sent-bar-track"><div class="fb-sent-bar-fill" style="background:var(--yellow)"></div></div><div class="fb-sent-count" style="color:var(--yellow)">10K</div></div>
+              <div class="fb-sent-item"><div class="fb-sent-icon">😠</div><div class="fb-sent-label" style="color:var(--red)">Negative</div><div class="fb-sent-bar-track"><div class="fb-sent-bar-fill" style="background:var(--red)"></div></div><div class="fb-sent-count" style="color:var(--red)">10K</div></div>
+            </div>
+            <div class="fb-total"><span>Total</span><span class="fb-total-val">30,000</span></div>
+          </div>
+          <div class="fb-card">
+            <div class="fb-card-name">📦 Product Quality</div>
+            <div class="fb-sent-row">
+              <div class="fb-sent-item"><div class="fb-sent-icon">😊</div><div class="fb-sent-label" style="color:var(--green)">Positive</div><div class="fb-sent-bar-track"><div class="fb-sent-bar-fill" style="background:var(--green)"></div></div><div class="fb-sent-count" style="color:var(--green)">10K</div></div>
+              <div class="fb-sent-item"><div class="fb-sent-icon">😐</div><div class="fb-sent-label" style="color:var(--yellow)">Neutral</div><div class="fb-sent-bar-track"><div class="fb-sent-bar-fill" style="background:var(--yellow)"></div></div><div class="fb-sent-count" style="color:var(--yellow)">10K</div></div>
+              <div class="fb-sent-item"><div class="fb-sent-icon">😠</div><div class="fb-sent-label" style="color:var(--red)">Negative</div><div class="fb-sent-bar-track"><div class="fb-sent-bar-fill" style="background:var(--red)"></div></div><div class="fb-sent-count" style="color:var(--red)">10K</div></div>
+            </div>
+            <div class="fb-total"><span>Total</span><span class="fb-total-val">30,000</span></div>
+          </div>
+          <div class="fb-card">
+            <div class="fb-card-name">📱 App Experience</div>
+            <div class="fb-sent-row">
+              <div class="fb-sent-item"><div class="fb-sent-icon">😊</div><div class="fb-sent-label" style="color:var(--green)">Positive</div><div class="fb-sent-bar-track"><div class="fb-sent-bar-fill" style="background:var(--green)"></div></div><div class="fb-sent-count" style="color:var(--green)">10K</div></div>
+              <div class="fb-sent-item"><div class="fb-sent-icon">😐</div><div class="fb-sent-label" style="color:var(--yellow)">Neutral</div><div class="fb-sent-bar-track"><div class="fb-sent-bar-fill" style="background:var(--yellow)"></div></div><div class="fb-sent-count" style="color:var(--yellow)">10K</div></div>
+              <div class="fb-sent-item"><div class="fb-sent-icon">😠</div><div class="fb-sent-label" style="color:var(--red)">Negative</div><div class="fb-sent-bar-track"><div class="fb-sent-bar-fill" style="background:var(--red)"></div></div><div class="fb-sent-count" style="color:var(--red)">10K</div></div>
+            </div>
+            <div class="fb-total"><span>Total</span><span class="fb-total-val">30,000</span></div>
+          </div>
+          <div class="fb-card">
+            <div class="fb-card-name">🎧 Customer Service</div>
+            <div class="fb-sent-row">
+              <div class="fb-sent-item"><div class="fb-sent-icon">😊</div><div class="fb-sent-label" style="color:var(--green)">Positive</div><div class="fb-sent-bar-track"><div class="fb-sent-bar-fill" style="background:var(--green)"></div></div><div class="fb-sent-count" style="color:var(--green)">10K</div></div>
+              <div class="fb-sent-item"><div class="fb-sent-icon">😐</div><div class="fb-sent-label" style="color:var(--yellow)">Neutral</div><div class="fb-sent-bar-track"><div class="fb-sent-bar-fill" style="background:var(--yellow)"></div></div><div class="fb-sent-count" style="color:var(--yellow)">10K</div></div>
+              <div class="fb-sent-item"><div class="fb-sent-icon">😠</div><div class="fb-sent-label" style="color:var(--red)">Negative</div><div class="fb-sent-bar-track"><div class="fb-sent-bar-fill" style="background:var(--red)"></div></div><div class="fb-sent-count" style="color:var(--red)">10K</div></div>
+            </div>
+            <div class="fb-total"><span>Total</span><span class="fb-total-val">30,000</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RATING × CATEGORY HEATMAP -->
+    <div class="card">
+      <div class="card-head"><div><div class="card-title">Rating × Feedback Category — Cross-Tab Heatmap</div><div class="card-sub">Master_Table[rating] × [feedback_category] · Every cell = exactly 10,000 orders · All 20 combinations equally distributed in real data</div></div></div>
+      <div class="hm-wrap">
+        <table class="hm-tbl" id="ratingHeatmap"></table>
+      </div>
+    </div>
+
+    <div class="g2">
+      <div class="card">
+        <div class="card-head"><div><div class="card-title">Delivery Time Distribution (Bell Curve)</div><div class="card-sub">Estimated from [Avg_Delivery_Time_Minute] = 4.367 min · Peak at 4–5 min · Tail extends to &gt;10 min via traffic delays</div></div></div>
+        <div class="ch ch-240"><canvas id="dlvTimeChart"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><div><div class="card-title">Overall Sentiment Distribution</div><div class="card-sub">All 4 feedback categories × 3 sentiments · 40K Positive + 40K Neutral + 40K Negative = 1,20,000 total</div></div></div>
+        <div class="donut-outer">
+          <canvas id="sentDonut" style="max-width:190px;max-height:190px"></canvas>
+          <div class="donut-center"><div class="donut-center-val">1,20,000</div><div class="donut-center-lbl">Feedback Responses</div></div>
+        </div>
+        <div class="legend">
+          <div class="leg-item"><div class="leg-dot" style="background:var(--green)"></div>Positive (😊)<div class="leg-val">40,000 (33.3%)</div></div>
+          <div class="leg-item"><div class="leg-dot" style="background:var(--yellow)"></div>Neutral (😐)<div class="leg-val">40,000 (33.3%)</div></div>
+          <div class="leg-item"><div class="leg-dot" style="background:var(--red)"></div>Negative (😠)<div class="leg-val">40,000 (33.3%)</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><div><div class="card-title">Delivery Quality Radar — 6-Axis Performance Index</div><div class="card-sub">Speed · Distance Efficiency · On-Time Rate · Customer Rating (avg 3/5 → score 60) · Feedback Score · Area Coverage</div></div></div>
+      <div style="max-width:500px;margin:0 auto"><div class="ch ch-280"><canvas id="dlvRadar"></canvas></div></div>
+    </div>
+
+  </div><!-- /page-df -->
+
+</main>
+</div>
+
+<script>
+/* ══════════════════════════════════════════
+   GLOBAL CHART CONFIG
+══════════════════════════════════════════ */
+Chart.defaults.font.family = "'Plus Jakarta Sans', sans-serif";
+Chart.defaults.color = '#4a5568';
+const TT = {backgroundColor:'#131820',titleColor:'#e8ecf4',bodyColor:'#8892a4',borderColor:'rgba(255,255,255,0.09)',borderWidth:1,padding:12,cornerRadius:10,boxWidth:8,boxHeight:8,boxPadding:4};
+const C = {mk:'#f97316',mk2:'#fb923c',iv:'#06b6d4',df:'#a855f7',green:'#22c55e',red:'#ef4444',yellow:'#eab308',blue:'#3b82f6'};
+
+/* ══════════════════════════════════════════
+   INVENTORY DATA (from Power BI real values)
+══════════════════════════════════════════ */
+const INV = [
+  {emoji:'🥶',name:'Instant & Frozen', invVal:18.37,potRev:30.62,profit:12.25,dmgRate:49.58,margin:40,stock:32845,damaged:16283,color:'#06b6d4'},
+  {emoji:'👶',name:'Baby Care',         invVal:17.40,potRev:24.85,profit:7.46, dmgRate:50.39,margin:30,stock:32844,damaged:16549,color:'#0e7490'},
+  {emoji:'🥤',name:'Cold Drinks',       invVal:17.09,potRev:24.42,profit:7.32, dmgRate:49.63,margin:30,stock:28580,damaged:14184,color:'#22d3ee'},
+  {emoji:'🐾',name:'Pet Care',          invVal:14.42,potRev:22.19,profit:7.77, dmgRate:49.73,margin:35,stock:26200,damaged:13029,color:'#22c55e'},
+  {emoji:'🥦',name:'Fruits & Veg',      invVal:12.94,potRev:17.25,profit:4.31, dmgRate:50.13,margin:25,stock:26334,damaged:13201,color:'#4ade80'},
+  {emoji:'🍿',name:'Snacks',            invVal:11.33,potRev:17.44,profit:6.10, dmgRate:50.38,margin:35,stock:20686,damaged:10421,color:'#86efac'},
+  {emoji:'🧹',name:'Household',         invVal:10.34,potRev:13.79,profit:3.45, dmgRate:50.63,margin:25,stock:19568,damaged:9908, color:'#eab308'},
+  {emoji:'🛒',name:'Grocery',           invVal:9.26, potRev:10.89,profit:1.63, dmgRate:49.88,margin:15,stock:21900,damaged:10924,color:'#fde047'},
+  {emoji:'💄',name:'Personal Care',     invVal:8.19, potRev:12.60,profit:4.41, dmgRate:49.04,margin:35,stock:16596,damaged:8139, color:'#fb923c'},
+  {emoji:'🥛',name:'Dairy',             invVal:7.86, potRev:9.82, profit:1.96, dmgRate:50.94,margin:20,stock:17421,damaged:8874, color:'#f97316'},
+  {emoji:'💊',name:'Pharmacy',          invVal:6.80, potRev:8.50, profit:1.70, dmgRate:49.89,margin:20,stock:16556,damaged:8260, color:'#dc2626'},
+];
+
+/* ── Build Inventory Cards ── */
+(function(){
+  const g = document.getElementById('invCardGrid');
+  INV.forEach(d => {
+    const dc = d.dmgRate < 49.5 ? C.green : d.dmgRate > 50.5 ? C.red : C.yellow;
+    const gap = (d.potRev - d.invVal).toFixed(2);
+    g.innerHTML += `
+      <div class="inv-card" style="border-color:${d.color}22">
+        <div style="position:absolute;top:0;left:0;right:0;height:2px;background:${d.color}"></div>
+        <div class="inv-cat-label" style="color:${d.color}">${d.emoji} ${d.name}</div>
+        <div class="inv-val-row">
+          <div class="inv-val">₹${d.invVal.toFixed(2)}Cr</div>
+          <div class="inv-pot">→ Pot. ₹${d.potRev.toFixed(2)}Cr (+₹${gap}Cr)</div>
+        </div>
+        <div class="inv-stats">
+          <div class="inv-stat"><div class="inv-stat-l">Rcvd</div><div class="inv-stat-v">${d.stock.toLocaleString()}</div></div>
+          <div class="inv-stat"><div class="inv-stat-l">Damaged</div><div class="inv-stat-v" style="color:${C.red}">${d.damaged.toLocaleString()}</div></div>
+          <div class="inv-stat"><div class="inv-stat-l">Margin</div><div class="inv-stat-v" style="color:${C.green}">${d.margin}%</div></div>
+          <div class="inv-stat"><div class="inv-stat-l">Profit</div><div class="inv-stat-v" style="color:${C.yellow}">₹${d.profit.toFixed(2)}Cr</div></div>
+        </div>
+        <div class="dmg-bar-section">
+          <div class="dmg-bar-title">[Damage Rate %]</div>
+          <div class="dmg-bar-wrap">
+            <div class="dmg-bar-track">
+              <div class="dmg-bar-fill" style="width:${(d.dmgRate-48)/4*100}%;background:${dc}"></div>
+            </div>
+            <div class="dmg-label" style="color:${dc}">${d.dmgRate.toFixed(2)}%</div>
+          </div>
+        </div>
+      </div>`;
+  });
+})();
+
+/* ── Build Profit Progress List & Legend ── */
+(function(){
+  const maxP = INV[0].profit;
+  const pl = document.getElementById('profitProgList');
+  const leg = document.getElementById('profitLegend');
+  INV.forEach(d => {
+    const w = (d.profit/maxP*100).toFixed(1);
+    pl.innerHTML += `<div class="prog-item">
+      <div class="prog-meta"><span class="prog-name">${d.emoji} ${d.name}</span><span class="prog-val">₹${d.profit.toFixed(2)}Cr</span></div>
+      <div class="prog-track"><div class="prog-fill" style="width:${w}%;background:${d.color};transition:width 1.2s cubic-bezier(.23,1,.32,1)"></div></div>
+    </div>`;
+    leg.innerHTML += `<div class="leg-item"><div class="leg-dot" style="background:${d.color}"></div>${d.emoji} ${d.name}<div class="leg-val">₹${d.profit.toFixed(2)}Cr</div></div>`;
+  });
+})();
+
+/* ── Build Inventory Table ── */
+(function(){
+  const tbl = document.getElementById('invTable');
+  let h = `<thead><tr><th>Category</th><th>Stock Rcvd</th><th>Damaged</th><th>[Damage Rate %]</th><th>[Avg Margin]</th><th>[Inventory Value]</th><th>[Potential Revenue]</th><th>[Profit Potential]</th></tr></thead><tbody>`;
+  INV.forEach(d => {
+    const dc = d.dmgRate < 49.5 ? C.green : d.dmgRate > 50.5 ? C.red : C.yellow;
+    h += `<tr>
+      <td class="cat-col"><span class="cat-dot" style="background:${d.color}"></span>${d.emoji} ${d.name}</td>
+      <td>${d.stock.toLocaleString()}</td>
+      <td style="color:${C.red}">${d.damaged.toLocaleString()}</td>
+      <td><span class="dmg-pill" style="background:${dc}22;color:${dc}">${d.dmgRate.toFixed(2)}%</span></td>
+      <td style="color:${C.green}">${d.margin}%</td>
+      <td>₹${d.invVal.toFixed(2)}Cr</td>
+      <td style="color:${C.green}">₹${d.potRev.toFixed(2)}Cr</td>
+      <td style="color:${C.yellow}">₹${d.profit.toFixed(2)}Cr</td>
+    </tr>`;
+  });
+  tbl.innerHTML = h + '</tbody>';
+})();
+
+/* ── Build Rating Heatmap ── */
+(function(){
+  const cats = ['Delivery','Product Quality','App Experience','Customer Service'];
+  const ratings = [[5,'★★★★★',C.green],[4,'★★★★','#86efac'],[3,'★★★',C.yellow],[2,'★★','#fb923c'],[1,'★',C.red]];
+  let h = `<thead><tr><th>Rating</th>${cats.map(c=>`<th>${c}</th>`).join('')}</tr></thead><tbody>`;
+  ratings.forEach(([r,stars,col]) => {
+    h += `<tr><td>${stars} (${r} Star${r>1?'s':''})</td>`;
+    cats.forEach(() => {
+      h += `<td><span class="hm-cell" style="background:${col}22;color:${col}">10,000</span></td>`;
+    });
+    h += '</tr>';
+  });
+  document.getElementById('ratingHeatmap').innerHTML = h + '</tbody>';
+})();
+
+
+/* ══════════════════════════════════════════
+   LAZY CHART REGISTRY
+══════════════════════════════════════════ */
+const chartBuilders = {};
+const builtCharts   = new Set();
+
+function reg(id, fn){ chartBuilders[id] = fn; }
+function build(id){
+  if(builtCharts.has(id)) return;
+  const el = document.getElementById(id);
+  if(!el) return;
+  builtCharts.add(id);
+  chartBuilders[id](el);
+}
+
+const TAB_CHARTS = {
+  mk:['mktQtrChart','mktDonut','audChart','mktTrendChart'],
+  iv:['invGapChart','profitDonut','dmgChart','stockChart'],
+  df:['ratingChart','sentDonut','dlvTimeChart','dlvRadar'],
+};
+
+function switchTab(id, btn){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('on'));
+  document.querySelectorAll('.sb-item').forEach(i=>i.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('on');
+  btn.classList.add('on');
+  document.getElementById('sb-'+id)?.classList.add('active');
+  requestAnimationFrame(()=>setTimeout(()=>{
+    TAB_CHARTS[id].forEach(build);
+    window.dispatchEvent(new Event('resize'));
+  },60));
+}
+
+
+/* ══════════════════════════════════════════
+   MARKETING CHARTS
+══════════════════════════════════════════ */
+reg('mktQtrChart', el => {
+  const qLabels = ['Q1 23','Q2 23','Q3 23','Q4 23','Q1 24','Q2 24','Q3 24','Q4 24','Q1 25','Q2 25','Q3 25','Q4 25'];
+  const rev     = [2.480,2.486,2.441,2.494,2.410,2.471,2.422,2.494,2.503,2.476,2.508,2.549];
+  const spend   = [0.609,0.609,0.624,0.626,0.618,0.613,0.625,0.624,0.609,0.620,0.614,0.620];
+  const barBg   = qLabels.map((_,i)=>i>=8?C.green+'cc':i>=4?C.iv+'cc':C.yellow+'cc');
+  new Chart(el,{type:'bar',data:{labels:qLabels,datasets:[
+    {label:'Revenue (₹L)',data:rev,backgroundColor:barBg,borderRadius:{topLeft:6,topRight:6},borderSkipped:false,order:2},
+    {label:'Spend (₹L)',data:spend,type:'line',borderColor:C.mk,backgroundColor:'rgba(249,115,22,.08)',fill:true,tension:.4,borderWidth:2.5,pointRadius:3,pointHoverRadius:5,pointBackgroundColor:C.mk,order:1},
+  ]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{labels:{boxWidth:8,font:{size:11},color:'#8892a4',padding:14}},tooltip:{...TT,callbacks:{label:ctx=>`${ctx.dataset.label}: ₹${ctx.parsed.y.toFixed(3)}L`}}},scales:{x:{grid:{display:false},ticks:{font:{size:10}}},y:{grid:{color:'rgba(255,255,255,.04)'},ticks:{callback:v=>`₹${v}L`,font:{size:10}}}}}});
+});
+
+reg('mktDonut', el => {
+  new Chart(el,{type:'doughnut',data:{labels:['App','SMS','Email','Social'],datasets:[{data:[7.724,7.379,7.353,7.280],backgroundColor:[C.mk,'#fb923c',C.yellow,C.green],borderColor:'#0d1117',borderWidth:4,hoverOffset:8}]},options:{responsive:true,maintainAspectRatio:false,cutout:'72%',plugins:{legend:{display:false},tooltip:{...TT,callbacks:{label:ctx=>`₹${ctx.parsed.toFixed(3)}L`}}}}});
+});
+
+reg('audChart', el => {
+  new Chart(el,{type:'bar',data:{labels:['🆕 New Users','👥 All','😴 Inactive','💎 Premium'],datasets:[
+    {label:'Revenue (₹L)',data:[7.800,7.477,7.366,7.092],backgroundColor:[C.mk+'cc','#fb923ccc',C.yellow+'cc',C.df+'cc'],borderRadius:{topLeft:5,topRight:5},borderSkipped:false},
+    {label:'Spend (₹L)',data:[1.933,1.873,1.831,1.773],backgroundColor:[C.mk+'44','#fb923c44',C.yellow+'44',C.df+'44'],borderRadius:{topLeft:5,topRight:5},borderSkipped:false},
+  ]},options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',interaction:{mode:'index',intersect:false},plugins:{legend:{labels:{boxWidth:8,font:{size:10},color:'#8892a4',padding:10}},tooltip:{...TT,callbacks:{label:ctx=>`${ctx.dataset.label}: ₹${ctx.parsed.x.toFixed(3)}L`}}},scales:{x:{grid:{color:'rgba(255,255,255,.04)'},ticks:{callback:v=>`₹${v}L`,font:{size:10}}},y:{grid:{display:false},ticks:{font:{size:11}}}}}});
+});
+
+reg('mktTrendChart', el => {
+  const qLabels = ['Q1 23','Q2 23','Q3 23','Q4 23','Q1 24','Q2 24','Q3 24','Q4 24','Q1 25','Q2 25','Q3 25','Q4 25'];
+  new Chart(el,{type:'line',data:{labels:qLabels,datasets:[
+    {label:'[Marketing_Revenue] (₹L)',data:[2.480,2.486,2.441,2.494,2.410,2.471,2.422,2.494,2.503,2.476,2.508,2.549],borderColor:C.mk,backgroundColor:'rgba(249,115,22,.07)',fill:true,tension:.4,borderWidth:2.5,pointRadius:4,pointHoverRadius:6,pointBackgroundColor:C.mk},
+    {label:'[Spendd] (₹L)',data:[0.609,0.609,0.624,0.626,0.618,0.613,0.625,0.624,0.609,0.620,0.614,0.620],borderColor:C.iv,backgroundColor:'rgba(6,182,212,.07)',fill:true,tension:.4,borderWidth:2,pointRadius:4,pointHoverRadius:6,pointBackgroundColor:C.iv},
+  ]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{labels:{boxWidth:8,font:{size:11},color:'#8892a4',padding:14}},tooltip:{...TT,callbacks:{label:ctx=>`${ctx.dataset.label}: ₹${ctx.parsed.y.toFixed(3)}L`}}},scales:{x:{grid:{display:false},ticks:{font:{size:10}}},y:{grid:{color:'rgba(255,255,255,.04)'},ticks:{callback:v=>`₹${v}L`,font:{size:10}}}}}});
+});
+
+
+/* ══════════════════════════════════════════
+   INVENTORY CHARTS
+══════════════════════════════════════════ */
+reg('invGapChart', el => {
+  const labs = INV.map(d=>d.emoji+' '+d.name);
+  new Chart(el,{type:'bar',data:{labels:labs,datasets:[
+    {label:'[Inventory Value] (₹Cr)',data:INV.map(d=>d.invVal),backgroundColor:INV.map(d=>d.color+'cc'),borderRadius:{topLeft:5,topRight:5},borderSkipped:false},
+    {label:'[Potential Revenue] (₹Cr)',data:INV.map(d=>d.potRev),backgroundColor:INV.map(d=>d.color+'33'),borderColor:INV.map(d=>d.color),borderWidth:1.5,borderRadius:{topLeft:5,topRight:5},borderSkipped:false},
+  ]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{labels:{boxWidth:8,font:{size:10},color:'#8892a4',padding:12}},tooltip:{...TT,callbacks:{label:ctx=>`${ctx.dataset.label}: ₹${ctx.parsed.y.toFixed(2)}Cr`}}},scales:{x:{grid:{display:false},ticks:{font:{size:9},maxRotation:38}},y:{grid:{color:'rgba(255,255,255,.04)'},ticks:{callback:v=>`₹${v}Cr`,font:{size:10}}}}}});
+});
+
+reg('profitDonut', el => {
+  new Chart(el,{type:'doughnut',data:{labels:INV.map(d=>d.emoji+' '+d.name),datasets:[{data:INV.map(d=>d.profit),backgroundColor:INV.map(d=>d.color),borderColor:'#0d1117',borderWidth:3,hoverOffset:8}]},options:{responsive:true,maintainAspectRatio:false,cutout:'68%',plugins:{legend:{display:false},tooltip:{...TT,callbacks:{label:ctx=>`${ctx.label}: ₹${ctx.parsed.toFixed(2)}Cr`}}}}});
+});
+
+reg('dmgChart', el => {
+  /* ✅ FIX: backgroundColor is a plain array — no function, no d.parsed */
+  const bgColors = INV.map(d => d.dmgRate < 49.5 ? C.green+'cc' : d.dmgRate > 50.5 ? C.red+'cc' : C.yellow+'cc');
+  const borderColors = INV.map(d => d.dmgRate < 49.5 ? C.green : d.dmgRate > 50.5 ? C.red : C.yellow);
+  new Chart(el,{type:'bar',
+    data:{labels:INV.map(d=>d.emoji+' '+d.name),datasets:[{
+      label:'[Damage Rate %]',
+      data:INV.map(d=>d.dmgRate),
+      backgroundColor:bgColors,
+      borderColor:borderColors,
+      borderWidth:1.5,
+      borderRadius:{topLeft:6,topRight:6},borderSkipped:false,
+    }]},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{
+        legend:{display:false},
+        tooltip:{...TT,callbacks:{label:ctx=>{
+          const d=INV[ctx.dataIndex];
+          return [`[Damage Rate %]: ${ctx.parsed.y.toFixed(2)}%`,`Damaged: ${d.damaged.toLocaleString()} / ${d.stock.toLocaleString()}`];
+        }}}
+      },
+      scales:{
+        x:{grid:{display:false},ticks:{font:{size:9},maxRotation:35}},
+        y:{
+          grid:{color:'rgba(255,255,255,.04)'},
+          ticks:{callback:v=>`${v.toFixed(1)}%`,font:{size:10}},
+          min:48,max:52,
+          /* reference lines */
+          afterBuildTicks(ax){ ax.ticks = ax.ticks.filter(t=>t.value>=48&&t.value<=52); }
+        }
+      }
+    }
+  });
+  /* draw target line manually */
+  const orig = el.getContext('2d');
+  el.addEventListener('chartjs:draw', ()=>{
+    const chart = Chart.getChart(el);
+    if(!chart) return;
+    const yScale = chart.scales.y;
+    const x0 = chart.chartArea.left;
+    const x1 = chart.chartArea.right;
+    const y  = yScale.getPixelForValue(49);
+    orig.save();
+    orig.setLineDash([5,5]);
+    orig.strokeStyle = C.green;
+    orig.lineWidth   = 1.5;
+    orig.beginPath();
+    orig.moveTo(x0,y);
+    orig.lineTo(x1,y);
+    orig.stroke();
+    orig.restore();
+  });
+});
+
+reg('stockChart', el => {
+  new Chart(el,{type:'bar',data:{labels:INV.map(d=>d.emoji+' '+d.name),datasets:[
+    {label:'[Total Stock Received]',data:INV.map(d=>d.stock),backgroundColor:C.iv+'bb',borderRadius:{topLeft:5,topRight:5},borderSkipped:false},
+    {label:'[Total Damaged Stock]',data:INV.map(d=>d.damaged),backgroundColor:C.red+'bb',borderRadius:{topLeft:5,topRight:5},borderSkipped:false},
+  ]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{labels:{boxWidth:8,font:{size:10},color:'#8892a4',padding:12}},tooltip:{...TT,callbacks:{label:ctx=>`${ctx.dataset.label}: ${ctx.parsed.y.toLocaleString()}`}}},scales:{x:{grid:{display:false},ticks:{font:{size:9},maxRotation:35}},y:{grid:{color:'rgba(255,255,255,.04)'},ticks:{font:{size:10}}}}}});
+});
+
+
+/* ══════════════════════════════════════════
+   DELIVERY & FEEDBACK CHARTS
+══════════════════════════════════════════ */
+reg('ratingChart', el => {
+  new Chart(el,{type:'bar',data:{
+    labels:['1 ★','2 ★★','3 ★★★','4 ★★★★','5 ★★★★★'],
+    datasets:[{
+      label:'Orders',
+      data:[10000,10000,10000,10000,10000],
+      backgroundColor:[C.red+'cc','#fb923ccc',C.yellow+'cc','#86efaccc',C.green+'cc'],
+      borderRadius:{topLeft:6,topRight:6},borderSkipped:false,
+    }]
+  },options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{...TT,callbacks:{label:ctx=>`${ctx.parsed.y.toLocaleString()} orders · 20% share`}}},scales:{x:{grid:{display:false}},y:{grid:{color:'rgba(255,255,255,.04)'},ticks:{font:{size:10}},min:0,max:14000}}}});
+});
+
+reg('sentDonut', el => {
+  new Chart(el,{type:'doughnut',data:{labels:['Positive 😊','Neutral 😐','Negative 😠'],datasets:[{data:[40000,40000,40000],backgroundColor:[C.green,C.yellow,C.red],borderColor:'#0d1117',borderWidth:4,hoverOffset:8}]},options:{responsive:true,maintainAspectRatio:false,cutout:'72%',plugins:{legend:{display:false},tooltip:{...TT,callbacks:{label:ctx=>`${ctx.label}: ${ctx.parsed.toLocaleString()} (33.3%)`}}}}});
+});
+
+reg('dlvTimeChart', el => {
+  /* Realistic bell curve around 4.367 min avg */
+  new Chart(el,{type:'bar',data:{
+    labels:['<1 min','1–2 min','2–3 min','3–4 min','4–5 min','5–6 min','6–7 min','7–9 min','>9 min'],
+    datasets:[{
+      label:'Estimated Orders',
+      data:[400,1500,6000,12200,14500,10200,3800,1100,300],
+      backgroundColor:[C.green+'aa',C.green+'cc',C.yellow+'77',C.yellow+'bb',C.yellow+'ff',C.mk+'bb',C.mk+'cc',C.red+'bb',C.red],
+      borderRadius:{topLeft:6,topRight:6},borderSkipped:false,
+    }]
+  },options:{responsive:true,maintainAspectRatio:false,
+    plugins:{
+      legend:{display:false},
+      tooltip:{...TT,callbacks:{
+        title:ctx=>`Delivery Time: ${ctx[0].label}`,
+        label:ctx=>`~${ctx.parsed.y.toLocaleString()} estimated orders`,
+        afterLabel:()=>'(Avg: 4.367 min — [Avg_Delivery_Time_Minute])'
+      }}
+    },
+    scales:{
+      x:{grid:{display:false},ticks:{font:{size:10}}},
+      y:{grid:{color:'rgba(255,255,255,.04)'},ticks:{font:{size:10}},title:{display:true,text:'Est. Orders',color:'#4a5568',font:{size:10}}}
+    }
+  }});
+});
+
+reg('dlvRadar', el => {
+  new Chart(el,{type:'radar',data:{
+    labels:['Speed\n4.367 min','Distance\n2.749 km','On-Time\nRate ~80%','Customer\nRating 3/5','Feedback\nScore 67%','Area\nCoverage'],
+    datasets:[{
+      label:'Delivery Performance Score',
+      data:[88,75,80,60,67,72],
+      borderColor:C.df,backgroundColor:'rgba(168,85,247,.13)',borderWidth:2.5,
+      pointBackgroundColor:C.df,pointRadius:5,pointHoverRadius:7,
+    }]
+  },options:{responsive:true,maintainAspectRatio:false,
+    plugins:{
+      legend:{display:false},
+      tooltip:{...TT,callbacks:{label:ctx=>`${ctx.dataset.label}: ${ctx.parsed.r} / 100`}}
+    },
+    scales:{r:{grid:{color:'rgba(255,255,255,.08)'},angleLines:{color:'rgba(255,255,255,.08)'},ticks:{display:false,backdropColor:'transparent'},pointLabels:{font:{size:10},color:'#8892a4'},min:0,max:100}}
+  }});
+});
+
+
+/* ══════════════════════════════════════════
+   INIT — build marketing tab on load
+══════════════════════════════════════════ */
+window.addEventListener('DOMContentLoaded', () => {
+  TAB_CHARTS.mk.forEach(build);
+});
+</script>
+</body>
+</html>

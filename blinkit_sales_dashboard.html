@@ -1,0 +1,1386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Blinkit — Sales Analytics Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Clash+Display:wght@400;500;600;700&family=Cabinet+Grotesk:wght@300;400;500;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+/* ═══════════════════════════════════════════════
+   DESIGN TOKENS
+═══════════════════════════════════════════════ */
+:root {
+  --bg:        #07080a;
+  --surface:   #0f1117;
+  --surface2:  #161920;
+  --surface3:  #1c2028;
+  --border:    rgba(255,255,255,0.06);
+  --border2:   rgba(255,255,255,0.10);
+  --yellow:    #f5c842;
+  --yellow2:   #ffd95a;
+  --green:     #3ddc84;
+  --red:       #ff5e5e;
+  --blue:      #4da3ff;
+  --orange:    #ff8c42;
+  --purple:    #a78bfa;
+  --text:      #eef0f4;
+  --text2:     #8b91a0;
+  --text3:     #555c6e;
+  --glow:      rgba(245,200,66,0.15);
+}
+
+/* ═══════════════════════════════════════════════
+   RESET & BASE
+═══════════════════════════════════════════════ */
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+html{font-size:14px;scroll-behavior:smooth}
+body{
+  font-family:'Cabinet Grotesk',sans-serif;
+  background:var(--bg);
+  color:var(--text);
+  min-height:100vh;
+  overflow-x:hidden;
+}
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--surface3);border-radius:99px}
+canvas{display:block}
+
+/* ═══════════════════════════════════════════════
+   NOISE TEXTURE OVERLAY
+═══════════════════════════════════════════════ */
+body::after{
+  content:'';
+  position:fixed;inset:0;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+  pointer-events:none;z-index:9999;opacity:.4;
+}
+
+/* ═══════════════════════════════════════════════
+   LAYOUT — SIDEBAR + MAIN
+═══════════════════════════════════════════════ */
+.layout{display:flex;min-height:100vh}
+
+/* ── SIDEBAR ── */
+.sidebar{
+  width:240px;flex-shrink:0;
+  background:var(--surface);
+  border-right:1px solid var(--border);
+  display:flex;flex-direction:column;
+  position:fixed;top:0;left:0;bottom:0;
+  z-index:100;overflow:hidden;
+}
+.sidebar::before{
+  content:'';position:absolute;
+  top:-80px;left:-80px;
+  width:260px;height:260px;
+  background:radial-gradient(circle,rgba(245,200,66,.12) 0%,transparent 70%);
+  pointer-events:none;
+}
+
+.sb-logo{
+  padding:28px 24px 24px;
+  display:flex;align-items:center;gap:12px;
+  border-bottom:1px solid var(--border);
+}
+.sb-logo-mark{
+  width:40px;height:40px;border-radius:12px;
+  background:linear-gradient(135deg,var(--yellow) 0%,#e5a800 100%);
+  display:flex;align-items:center;justify-content:center;
+  font-size:20px;position:relative;
+  box-shadow:0 0 20px rgba(245,200,66,.35);
+}
+.sb-logo-mark::after{
+  content:'';position:absolute;inset:0;border-radius:12px;
+  background:linear-gradient(135deg,rgba(255,255,255,.25),transparent);
+}
+.sb-brand{display:flex;flex-direction:column}
+.sb-brand-name{
+  font-family:'Clash Display',sans-serif;
+  font-size:17px;font-weight:700;
+  color:var(--yellow);letter-spacing:-.3px;
+}
+.sb-brand-sub{font-size:10px;color:var(--text3);letter-spacing:1.5px;text-transform:uppercase;margin-top:1px}
+
+.sb-section-label{
+  font-size:9px;letter-spacing:2px;text-transform:uppercase;
+  color:var(--text3);padding:20px 24px 8px;font-weight:600;
+}
+.sb-nav{flex:1;overflow-y:auto;padding:0 12px}
+.sb-item{
+  display:flex;align-items:center;gap:12px;
+  padding:11px 14px;border-radius:10px;
+  cursor:pointer;transition:all .2s;
+  color:var(--text2);font-size:13px;font-weight:500;
+  margin-bottom:2px;position:relative;
+  border:1px solid transparent;
+}
+.sb-item:hover{background:var(--surface2);color:var(--text)}
+.sb-item.active{
+  background:linear-gradient(135deg,rgba(245,200,66,.12),rgba(245,200,66,.04));
+  color:var(--yellow);border-color:rgba(245,200,66,.2);
+}
+.sb-item.active::before{
+  content:'';position:absolute;left:0;top:25%;bottom:25%;
+  width:2px;background:var(--yellow);border-radius:99px;
+}
+.sb-icon{font-size:15px;width:18px;text-align:center}
+.sb-badge{
+  margin-left:auto;background:rgba(245,200,66,.15);
+  color:var(--yellow);font-size:10px;font-weight:700;
+  padding:2px 7px;border-radius:99px;
+}
+
+.sb-footer{
+  padding:16px 24px;border-top:1px solid var(--border);
+}
+.sb-live{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--text3)}
+.sb-dot{
+  width:7px;height:7px;border-radius:50%;
+  background:var(--green);flex-shrink:0;
+  animation:pulse-dot 2s ease-in-out infinite;
+  box-shadow:0 0 6px var(--green);
+}
+@keyframes pulse-dot{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.8)}}
+.sb-model{font-size:10px;color:var(--text3);margin-top:4px;display:flex;gap:5px;align-items:center}
+.sb-model span{color:var(--text2)}
+
+/* ── MAIN ── */
+.main{
+  margin-left:240px;flex:1;
+  display:flex;flex-direction:column;
+  min-height:100vh;
+}
+
+/* ── TOPBAR ── */
+.topbar{
+  background:rgba(7,8,10,.85);backdrop-filter:blur(20px);
+  border-bottom:1px solid var(--border);
+  padding:0 36px;height:64px;
+  display:flex;align-items:center;justify-content:space-between;
+  position:sticky;top:0;z-index:50;
+}
+.tb-left{display:flex;flex-direction:column}
+.tb-title{
+  font-family:'Clash Display',sans-serif;
+  font-size:18px;font-weight:600;
+  color:var(--text);letter-spacing:-.3px;
+}
+.tb-sub{font-size:11px;color:var(--text3);margin-top:2px;display:flex;align-items:center;gap:8px}
+.tb-sub-dot{width:3px;height:3px;border-radius:50%;background:var(--text3)}
+.tb-right{display:flex;align-items:center;gap:10px}
+.tb-chip{
+  display:flex;align-items:center;gap:6px;
+  background:var(--surface2);border:1px solid var(--border);
+  padding:7px 14px;border-radius:8px;
+  font-size:12px;color:var(--text2);cursor:pointer;
+  transition:all .2s;font-weight:500;
+}
+.tb-chip:hover{border-color:var(--yellow);color:var(--yellow)}
+.tb-chip.active{background:rgba(245,200,66,.1);border-color:rgba(245,200,66,.3);color:var(--yellow)}
+
+/* ── PAGE CONTENT ── */
+.page{padding:32px 36px;display:flex;flex-direction:column;gap:28px}
+
+/* ═══════════════════════════════════════════════
+   SECTION HEADERS
+═══════════════════════════════════════════════ */
+.section-header{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:0}
+.section-title{
+  font-family:'Clash Display',sans-serif;
+  font-size:13px;font-weight:600;
+  color:var(--text3);letter-spacing:1.5px;text-transform:uppercase;
+}
+.section-more{font-size:11px;color:var(--text3);cursor:pointer;transition:color .2s}
+.section-more:hover{color:var(--yellow)}
+
+/* ═══════════════════════════════════════════════
+   KPI CARDS — ROW 1
+═══════════════════════════════════════════════ */
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+
+.kpi{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:16px;
+  padding:20px 22px 18px;
+  position:relative;overflow:hidden;
+  cursor:default;
+  transition:transform .25s,border-color .25s,box-shadow .25s;
+  animation:fadeUp .5s ease both;
+}
+.kpi:nth-child(1){animation-delay:.05s}
+.kpi:nth-child(2){animation-delay:.1s}
+.kpi:nth-child(3){animation-delay:.15s}
+.kpi:nth-child(4){animation-delay:.2s}
+.kpi:hover{
+  transform:translateY(-3px);
+  border-color:var(--border2);
+  box-shadow:0 12px 40px rgba(0,0,0,.4);
+}
+.kpi-accent-line{
+  position:absolute;top:0;left:20px;right:20px;
+  height:2px;border-radius:0 0 99px 99px;
+  background:var(--accent-col,var(--yellow));
+  opacity:.8;
+}
+.kpi-bg-glow{
+  position:absolute;top:-40px;right:-40px;
+  width:120px;height:120px;
+  background:radial-gradient(circle,var(--accent-col,var(--yellow)) 0%,transparent 70%);
+  opacity:.06;pointer-events:none;
+}
+.kpi-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px}
+.kpi-label{font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.8px}
+.kpi-icon-wrap{
+  width:34px;height:34px;border-radius:9px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:16px;
+  background:rgba(255,255,255,.04);
+  border:1px solid var(--border);
+}
+.kpi-value{
+  font-family:'Clash Display',sans-serif;
+  font-size:30px;font-weight:700;
+  color:var(--text);line-height:1;
+  letter-spacing:-1px;
+}
+.kpi-value sup{font-size:14px;font-weight:500;color:var(--text2);vertical-align:super;margin-right:2px}
+.kpi-meta{margin-top:10px;display:flex;align-items:center;gap:6px}
+.kpi-change{
+  display:inline-flex;align-items:center;gap:3px;
+  font-size:11px;font-weight:700;padding:3px 8px;border-radius:99px;
+}
+.kpi-change.up{background:rgba(61,220,132,.12);color:var(--green)}
+.kpi-change.down{background:rgba(255,94,94,.12);color:var(--red)}
+.kpi-change.neutral{background:rgba(255,255,255,.06);color:var(--text2)}
+.kpi-meta-text{font-size:11px;color:var(--text3)}
+
+/* Mini sparkline */
+.kpi-spark{
+  position:absolute;bottom:0;right:0;
+  width:90px;height:38px;opacity:.25;
+}
+
+/* ═══════════════════════════════════════════════
+   SECONDARY KPI ROW
+═══════════════════════════════════════════════ */
+.kpi-sec-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+.kpi-sec{
+  background:var(--surface2);border:1px solid var(--border);
+  border-radius:12px;padding:16px 18px;
+  display:flex;flex-direction:column;gap:6px;
+  animation:fadeUp .5s ease both;
+}
+.kpi-sec:nth-child(1){animation-delay:.22s}
+.kpi-sec:nth-child(2){animation-delay:.27s}
+.kpi-sec:nth-child(3){animation-delay:.32s}
+.kpi-sec:nth-child(4){animation-delay:.37s}
+.kpi-sec-label{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;font-weight:600}
+.kpi-sec-row{display:flex;align-items:baseline;gap:8px}
+.kpi-sec-val{
+  font-family:'Clash Display',sans-serif;
+  font-size:20px;font-weight:700;color:var(--text);
+}
+.kpi-sec-badge{
+  font-size:10px;font-weight:700;
+  padding:2px 7px;border-radius:99px;
+}
+.kpi-sec-sub{font-size:11px;color:var(--text3)}
+.kpi-sec-sub b{color:var(--text2);font-weight:600}
+
+/* ═══════════════════════════════════════════════
+   CHART CARDS
+═══════════════════════════════════════════════ */
+.card{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:16px;
+  padding:24px;overflow:hidden;
+  transition:border-color .25s;
+  animation:fadeUp .5s ease both;
+  animation-delay:.3s;
+}
+.card:hover{border-color:var(--border2)}
+
+.card-head{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px}
+.card-title{font-family:'Clash Display',sans-serif;font-size:15px;font-weight:600;color:var(--text);letter-spacing:-.2px}
+.card-sub{font-size:11px;color:var(--text3);margin-top:4px}
+.card-actions{display:flex;gap:6px}
+.tag{
+  background:var(--surface3);border:1px solid var(--border);
+  border-radius:7px;padding:4px 10px;
+  font-size:11px;color:var(--text3);cursor:pointer;
+  transition:all .15s;font-weight:500;white-space:nowrap;
+}
+.tag:hover,.tag.on{background:rgba(245,200,66,.1);border-color:rgba(245,200,66,.25);color:var(--yellow)}
+
+/* chart containers */
+.ch{position:relative}
+.ch-200{height:200px}
+.ch-240{height:240px}
+.ch-260{height:260px}
+.ch-300{height:300px}
+.ch-320{height:320px}
+.ch-180{height:180px}
+
+/* ═══════════════════════════════════════════════
+   GRID LAYOUTS
+═══════════════════════════════════════════════ */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px}
+.g-main{display:grid;grid-template-columns:1.65fr 1fr;gap:20px}
+.g-main2{display:grid;grid-template-columns:1fr 1.4fr;gap:20px}
+.g-3-2{display:grid;grid-template-columns:2fr 1fr 1fr;gap:20px}
+
+/* ═══════════════════════════════════════════════
+   REVENUE TREND — annotated
+═══════════════════════════════════════════════ */
+.trend-tabs{display:flex;gap:4px}
+.t-tab{
+  padding:5px 12px;border-radius:7px;
+  font-size:11px;font-weight:600;cursor:pointer;
+  color:var(--text3);transition:all .15s;border:1px solid transparent;
+}
+.t-tab.on{background:rgba(245,200,66,.12);border-color:rgba(245,200,66,.25);color:var(--yellow)}
+.t-tab:hover:not(.on){background:var(--surface2);color:var(--text2)}
+
+/* ═══════════════════════════════════════════════
+   BAR LIST — horizontal
+═══════════════════════════════════════════════ */
+.bar-list{display:flex;flex-direction:column;gap:9px}
+.bl-item{}
+.bl-meta{display:flex;align-items:center;justify-content:space-between;margin-bottom:5px}
+.bl-rank{
+  font-size:10px;font-weight:700;color:var(--text3);
+  width:16px;text-align:center;flex-shrink:0;
+}
+.bl-name{font-size:12px;color:var(--text2);flex:1;padding:0 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bl-val{font-family:'Clash Display',sans-serif;font-size:13px;font-weight:600;color:var(--text);white-space:nowrap}
+.bl-pct{font-size:10px;color:var(--text3);margin-left:6px}
+.bl-track{height:4px;background:var(--surface3);border-radius:99px;overflow:hidden}
+.bl-fill{height:100%;border-radius:99px;transition:width 1.2s cubic-bezier(.23,1,.32,1)}
+
+/* ═══════════════════════════════════════════════
+   SEGMENT TABLE
+═══════════════════════════════════════════════ */
+.seg-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.seg-card{
+  background:var(--surface2);border:1px solid var(--border);
+  border-radius:12px;padding:16px;
+  position:relative;overflow:hidden;transition:border-color .2s;
+}
+.seg-card:hover{border-color:rgba(255,255,255,.12)}
+.seg-card::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:2px;
+  background:var(--seg-col);opacity:.7;
+}
+.seg-name{font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px}
+.seg-rev{font-family:'Clash Display',sans-serif;font-size:22px;font-weight:700;color:var(--text);letter-spacing:-.5px}
+.seg-row{display:flex;gap:16px;margin-top:10px}
+.seg-stat{display:flex;flex-direction:column;gap:2px}
+.seg-stat-l{font-size:10px;color:var(--text3)}
+.seg-stat-v{font-size:13px;font-weight:700;color:var(--text2)}
+.seg-bar{margin-top:10px;height:3px;background:var(--surface3);border-radius:99px;overflow:hidden}
+.seg-bar-fill{height:100%;border-radius:99px;background:var(--seg-col)}
+
+/* ═══════════════════════════════════════════════
+   PAYMENT CARDS
+═══════════════════════════════════════════════ */
+.pay-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.pay-card{
+  background:var(--surface2);border:1px solid var(--border);
+  border-radius:12px;padding:14px 16px;
+  display:flex;align-items:center;gap:12px;
+  transition:border-color .2s;
+}
+.pay-card:hover{border-color:rgba(255,255,255,.12)}
+.pay-emoji{font-size:22px;width:36px;text-align:center}
+.pay-info{flex:1}
+.pay-name{font-size:12px;font-weight:600;color:var(--text2)}
+.pay-rev{font-family:'Clash Display',sans-serif;font-size:16px;font-weight:700;color:var(--text)}
+.pay-share{font-size:10px;color:var(--text3)}
+.pay-bar-v{width:3px;height:36px;border-radius:99px;background:var(--surface3);position:relative;overflow:hidden}
+.pay-bar-v-fill{position:absolute;bottom:0;left:0;right:0;border-radius:99px}
+
+/* ═══════════════════════════════════════════════
+   YOY TABLE
+═══════════════════════════════════════════════ */
+.yoy-table{width:100%;border-collapse:collapse}
+.yoy-table th{
+  font-size:9px;font-weight:700;color:var(--text3);
+  text-transform:uppercase;letter-spacing:.8px;
+  padding:0 0 12px;text-align:left;
+  border-bottom:1px solid var(--border);
+}
+.yoy-table th:not(:first-child){text-align:right}
+.yoy-table td{
+  padding:10px 0;font-size:12px;
+  border-bottom:1px solid rgba(255,255,255,.03);
+  vertical-align:middle;
+}
+.yoy-table tr:last-child td{border-bottom:none}
+.yoy-table td:not(:first-child){text-align:right;font-family:'Clash Display',sans-serif;font-weight:600}
+.yoy-table td.cat-name{color:var(--text2);font-weight:500;display:flex;align-items:center;gap:8px}
+.yoy-table td.cat-name .dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.yoy-table td.val{color:var(--text)}
+.yoy-change{
+  display:inline-flex;align-items:center;gap:3px;
+  font-size:10px;font-weight:700;
+  padding:2px 7px;border-radius:99px;font-family:'Cabinet Grotesk',sans-serif;
+}
+.yoy-change.up{background:rgba(61,220,132,.12);color:var(--green)}
+.yoy-change.down{background:rgba(255,94,94,.12);color:var(--red)}
+.yoy-change.flat{background:rgba(255,255,255,.06);color:var(--text3)}
+
+/* ═══════════════════════════════════════════════
+   DONUT WRAP
+═══════════════════════════════════════════════ */
+.donut-wrap{position:relative;height:200px;display:flex;align-items:center;justify-content:center}
+.donut-center{
+  position:absolute;top:50%;left:50%;
+  transform:translate(-50%,-50%);
+  text-align:center;pointer-events:none;
+}
+.donut-center-val{font-family:'Clash Display',sans-serif;font-size:24px;font-weight:700;color:var(--text);line-height:1}
+.donut-center-lbl{font-size:10px;color:var(--text3);margin-top:3px}
+
+/* ═══════════════════════════════════════════════
+   LEGEND
+═══════════════════════════════════════════════ */
+.legend{display:flex;flex-direction:column;gap:8px;margin-top:14px}
+.legend-item{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text2)}
+.legend-dot{width:8px;height:8px;border-radius:2px;flex-shrink:0}
+.legend-val{margin-left:auto;font-family:'Clash Display',sans-serif;font-weight:600;font-size:13px;color:var(--text)}
+
+/* ═══════════════════════════════════════════════
+   PRODUCT RANKING
+═══════════════════════════════════════════════ */
+.prod-list{display:flex;flex-direction:column;gap:0}
+.prod-item{
+  display:flex;align-items:center;gap:12px;
+  padding:11px 0;
+  border-bottom:1px solid rgba(255,255,255,.04);
+  transition:background .15s;
+}
+.prod-item:last-child{border-bottom:none}
+.prod-rank{
+  font-family:'Clash Display',sans-serif;
+  font-size:16px;font-weight:700;color:var(--text3);
+  width:24px;flex-shrink:0;
+}
+.prod-rank.gold{color:var(--yellow)}
+.prod-rank.silver{color:#aaa}
+.prod-rank.bronze{color:#cd7f32}
+.prod-info{flex:1;min-width:0}
+.prod-name{font-size:12px;font-weight:600;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.prod-cat{font-size:10px;color:var(--text3);margin-top:2px}
+.prod-right{text-align:right;flex-shrink:0}
+.prod-rev{font-family:'Clash Display',sans-serif;font-size:14px;font-weight:700;color:var(--text)}
+.prod-bar-wrap{width:60px;height:3px;background:var(--surface3);border-radius:99px;overflow:hidden;margin-top:4px;margin-left:auto}
+.prod-bar-fill{height:100%;border-radius:99px;background:linear-gradient(90deg,var(--yellow),var(--yellow2))}
+
+/* ═══════════════════════════════════════════════
+   HEATMAP — category × year
+═══════════════════════════════════════════════ */
+.heatmap-wrap{overflow-x:auto}
+.heatmap{border-collapse:collapse;width:100%;min-width:420px}
+.heatmap th{
+  font-size:10px;color:var(--text3);
+  text-transform:uppercase;letter-spacing:.8px;font-weight:600;
+  padding:0 8px 10px;text-align:center;
+}
+.heatmap th:first-child{text-align:left}
+.heatmap td{
+  padding:6px 8px;font-size:12px;
+  text-align:center;font-family:'Clash Display',sans-serif;font-weight:600;
+}
+.heatmap td:first-child{text-align:left;font-family:'Cabinet Grotesk',sans-serif;font-weight:500;color:var(--text2);font-size:11px;white-space:nowrap}
+.hm-cell{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:100%;height:28px;border-radius:6px;font-size:11px;
+}
+
+/* ═══════════════════════════════════════════════
+   ANIMATIONS
+═══════════════════════════════════════════════ */
+@keyframes fadeUp{
+  from{opacity:0;transform:translateY(18px)}
+  to{opacity:1;transform:translateY(0)}
+}
+@keyframes countUp{from{opacity:0}to{opacity:1}}
+
+/* ═══════════════════════════════════════════════
+   AREA MIX CHART TOOLTIP
+═══════════════════════════════════════════════ */
+.chart-legend-row{display:flex;flex-wrap:wrap;gap:14px;margin-bottom:16px}
+.cl-item{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text2)}
+.cl-line{width:16px;height:2px;border-radius:99px;flex-shrink:0}
+
+/* ═══════════════════════════════════════════════
+   QoQ / MoM GAUGE
+═══════════════════════════════════════════════ */
+.perf-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.perf-box{
+  background:var(--surface2);border:1px solid var(--border);
+  border-radius:12px;padding:16px;text-align:center;
+}
+.perf-box-lbl{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px;font-weight:600}
+.perf-box-val{
+  font-family:'Clash Display',sans-serif;
+  font-size:22px;font-weight:700;
+}
+.perf-box-sub{font-size:10px;color:var(--text3);margin-top:4px}
+
+/* ═══════════════════════════════════════════════
+   AREA CITY — top areas scrollable
+═══════════════════════════════════════════════ */
+.city-scroll{max-height:340px;overflow-y:auto;padding-right:4px}
+
+/* ═══════════════════════════════════════════════
+   RESPONSIVE OVERRIDE
+═══════════════════════════════════════════════ */
+@media(max-width:1200px){
+  .kpi-grid{grid-template-columns:repeat(2,1fr)}
+  .kpi-sec-grid{grid-template-columns:repeat(2,1fr)}
+  .g-main,.g-main2,.g-3-2{grid-template-columns:1fr}
+  .g2,.g3{grid-template-columns:1fr}
+  .sidebar{width:200px}
+  .main{margin-left:200px}
+}
+</style>
+</head>
+<body>
+<div class="layout">
+
+<!-- ═══════════════ SIDEBAR ═══════════════ -->
+<aside class="sidebar">
+  <div class="sb-logo">
+    <div class="sb-logo-mark">⚡</div>
+    <div class="sb-brand">
+      <div class="sb-brand-name">Blinkit</div>
+      <div class="sb-brand-sub">Analytics Suite</div>
+    </div>
+  </div>
+
+  <div class="sb-nav">
+    <div class="sb-section-label">Performance</div>
+    <div class="sb-item active">
+      <span class="sb-icon">📊</span> Sales Overview
+      <span class="sb-badge">Live</span>
+    </div>
+    <div class="sb-item"><span class="sb-icon">📅</span> Revenue Trends</div>
+    <div class="sb-item"><span class="sb-icon">🏷️</span> Categories</div>
+    <div class="sb-item"><span class="sb-icon">🗺️</span> Area Analysis</div>
+
+    <div class="sb-section-label">Deep Dive</div>
+    <div class="sb-item"><span class="sb-icon">👥</span> Customer Segments</div>
+    <div class="sb-item"><span class="sb-icon">💳</span> Payment Methods</div>
+    <div class="sb-item"><span class="sb-icon">📦</span> Product Ranking</div>
+    <div class="sb-item"><span class="sb-icon">📈</span> YoY / MoM / QoQ</div>
+
+    <div class="sb-section-label">System</div>
+    <div class="sb-item"><span class="sb-icon">⚙️</span> Settings</div>
+    <div class="sb-item"><span class="sb-icon">↗️</span> Export Report</div>
+  </div>
+
+  <div class="sb-footer">
+    <div class="sb-live"><span class="sb-dot"></span>Power BI Connected</div>
+    <div class="sb-model">Model: <span>136 MB · 51 Measures</span></div>
+  </div>
+</aside>
+
+<!-- ═══════════════ MAIN ═══════════════ -->
+<main class="main">
+
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <div class="tb-left">
+      <div class="tb-title">Sales Analytics Dashboard</div>
+      <div class="tb-sub">
+        Blinkit Advance Project
+        <span class="tb-sub-dot"></span>
+        Master_Table · Calendar · Sales_Measures
+        <span class="tb-sub-dot"></span>
+        Last updated: Apr 12, 2026
+      </div>
+    </div>
+    <div class="tb-right">
+      <div class="tb-chip active">📅 All Time (2023–2025)</div>
+      <div class="tb-chip">2025</div>
+      <div class="tb-chip">2024</div>
+      <div class="tb-chip">⬇ Export</div>
+    </div>
+  </div>
+
+  <!-- ═══ PAGE ═══ -->
+  <div class="page">
+
+    <!-- ── KPI ROW 1 ── -->
+    <div class="kpi-grid">
+
+      <div class="kpi" style="--accent-col:var(--yellow)">
+        <div class="kpi-accent-line"></div>
+        <div class="kpi-bg-glow"></div>
+        <div class="kpi-top">
+          <div class="kpi-label">Total Revenue</div>
+          <div class="kpi-icon-wrap">💰</div>
+        </div>
+        <div class="kpi-value"><sup>₹</sup>264.4<span style="font-size:18px;color:var(--text2)">Cr</span></div>
+        <div class="kpi-meta">
+          <span class="kpi-change neutral">— All 3 Years</span>
+          <span class="kpi-meta-text">2023 + 2024 + 2025</span>
+        </div>
+        <svg class="kpi-spark" viewBox="0 0 90 38"><polyline points="0,32 18,28 36,22 54,16 72,11 90,6" fill="none" stroke="var(--yellow)" stroke-width="2" stroke-linecap="round"/></svg>
+      </div>
+
+      <div class="kpi" style="--accent-col:var(--green)">
+        <div class="kpi-accent-line"></div>
+        <div class="kpi-bg-glow"></div>
+        <div class="kpi-top">
+          <div class="kpi-label">Total Orders</div>
+          <div class="kpi-icon-wrap">📦</div>
+        </div>
+        <div class="kpi-value">50,000</div>
+        <div class="kpi-meta">
+          <span class="kpi-change up">↑ Active</span>
+          <span class="kpi-meta-text">All categories covered</span>
+        </div>
+        <svg class="kpi-spark" viewBox="0 0 90 38"><polyline points="0,30 18,24 36,18 54,14 72,10 90,5" fill="none" stroke="var(--green)" stroke-width="2" stroke-linecap="round"/></svg>
+      </div>
+
+      <div class="kpi" style="--accent-col:var(--blue)">
+        <div class="kpi-accent-line"></div>
+        <div class="kpi-bg-glow"></div>
+        <div class="kpi-top">
+          <div class="kpi-label">Unique Customers</div>
+          <div class="kpi-icon-wrap">👥</div>
+        </div>
+        <div class="kpi-value">21,671</div>
+        <div class="kpi-meta">
+          <span class="kpi-change down">↓ -0.87%</span>
+          <span class="kpi-meta-text">vs Previous Year</span>
+        </div>
+        <svg class="kpi-spark" viewBox="0 0 90 38"><polyline points="0,26 18,22 36,18 54,20 72,18 90,22" fill="none" stroke="var(--blue)" stroke-width="2" stroke-linecap="round"/></svg>
+      </div>
+
+      <div class="kpi" style="--accent-col:var(--orange)">
+        <div class="kpi-accent-line"></div>
+        <div class="kpi-bg-glow"></div>
+        <div class="kpi-top">
+          <div class="kpi-label">Current Year Sales</div>
+          <div class="kpi-icon-wrap">📅</div>
+        </div>
+        <div class="kpi-value"><sup>₹</sup>87.7<span style="font-size:18px;color:var(--text2)">Cr</span></div>
+        <div class="kpi-meta">
+          <span class="kpi-change down">↓ -0.56%</span>
+          <span class="kpi-meta-text">vs 2024 (₹88.2Cr)</span>
+        </div>
+        <svg class="kpi-spark" viewBox="0 0 90 38"><polyline points="0,20 18,18 36,14 54,18 72,20 90,22" fill="none" stroke="var(--orange)" stroke-width="2" stroke-linecap="round"/></svg>
+      </div>
+    </div>
+
+    <!-- ── SECONDARY KPI ROW ── -->
+    <div class="kpi-sec-grid">
+      <div class="kpi-sec">
+        <div class="kpi-sec-label">MoM Growth (Dec 25)</div>
+        <div class="kpi-sec-row">
+          <div class="kpi-sec-val" style="color:var(--green)">+2.79%</div>
+          <span class="kpi-sec-badge" style="background:rgba(61,220,132,.12);color:var(--green)">↑ Up</span>
+        </div>
+        <div class="kpi-sec-sub">CM: <b>₹7.16Cr</b> &nbsp;·&nbsp; PM: ₹7.01Cr</div>
+      </div>
+      <div class="kpi-sec">
+        <div class="kpi-sec-label">QoQ Growth (Q4 25)</div>
+        <div class="kpi-sec-row">
+          <div class="kpi-sec-val" style="color:var(--red)">-7.12%</div>
+          <span class="kpi-sec-badge" style="background:rgba(255,94,94,.12);color:var(--red)">↓ Down</span>
+        </div>
+        <div class="kpi-sec-sub">CQ: <b>₹21.5Cr</b> &nbsp;·&nbsp; PQ: ₹23.1Cr (Q3)</div>
+      </div>
+      <div class="kpi-sec">
+        <div class="kpi-sec-label">Rolling 12M Revenue</div>
+        <div class="kpi-sec-row">
+          <div class="kpi-sec-val">₹87.7Cr</div>
+          <span class="kpi-sec-badge" style="background:rgba(255,255,255,.06);color:var(--text2)">YoY -0.56%</span>
+        </div>
+        <div class="kpi-sec-sub">PY Rolling: <b>₹88.2Cr</b></div>
+      </div>
+      <div class="kpi-sec">
+        <div class="kpi-sec-label">Avg Order Value</div>
+        <div class="kpi-sec-row">
+          <div class="kpi-sec-val">₹52,873</div>
+          <span class="kpi-sec-badge" style="background:rgba(245,200,66,.12);color:var(--yellow)">~</span>
+        </div>
+        <div class="kpi-sec-sub">Total Rev ÷ Orders (50K)</div>
+      </div>
+    </div>
+
+    <!-- ── REVENUE TREND + DONUT ── -->
+    <div class="g-main">
+      <div class="card">
+        <div class="card-head">
+          <div>
+            <div class="card-title">Monthly Revenue Trend</div>
+            <div class="card-sub">Jan 2023 – Dec 2025 · Calendar-aligned · All measures applied</div>
+          </div>
+          <div class="trend-tabs">
+            <div class="t-tab on" onclick="switchTrend('monthly',this)">Monthly</div>
+            <div class="t-tab" onclick="switchTrend('quarterly',this)">Quarterly</div>
+            <div class="t-tab" onclick="switchTrend('yearly',this)">Yearly</div>
+          </div>
+        </div>
+        <div class="chart-legend-row">
+          <div class="cl-item"><div class="cl-line" style="background:var(--yellow)"></div>2023</div>
+          <div class="cl-item"><div class="cl-line" style="background:var(--blue)"></div>2024</div>
+          <div class="cl-item"><div class="cl-line" style="background:var(--green)"></div>2025</div>
+        </div>
+        <div class="ch ch-300"><canvas id="trendChart"></canvas></div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <div>
+            <div class="card-title">Revenue Split</div>
+            <div class="card-sub">By year · 3-year overview</div>
+          </div>
+        </div>
+        <div class="donut-wrap">
+          <canvas id="yearDonut" style="max-width:190px;max-height:190px"></canvas>
+          <div class="donut-center">
+            <div class="donut-center-val">₹264Cr</div>
+            <div class="donut-center-lbl">All Years</div>
+          </div>
+        </div>
+        <div class="legend">
+          <div class="legend-item">
+            <div class="legend-dot" style="background:var(--yellow)"></div>
+            2023
+            <div class="legend-val">₹88.5Cr</div>
+          </div>
+          <div class="legend-item">
+            <div class="legend-dot" style="background:var(--blue)"></div>
+            2024
+            <div class="legend-val">₹88.2Cr</div>
+          </div>
+          <div class="legend-item">
+            <div class="legend-dot" style="background:var(--green)"></div>
+            2025 (CY)
+            <div class="legend-val">₹87.7Cr</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── CATEGORY REVENUE + YOY TABLE ── -->
+    <div class="g-main2">
+      <div class="card">
+        <div class="card-head">
+          <div>
+            <div class="card-title">Category Revenue Breakdown</div>
+            <div class="card-sub">All 11 product categories · CY vs PY</div>
+          </div>
+          <div class="card-actions">
+            <span class="tag on">Revenue</span>
+            <span class="tag">YoY</span>
+          </div>
+        </div>
+        <div class="ch ch-320"><canvas id="catChart"></canvas></div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <div>
+            <div class="card-title">YoY Category Comparison</div>
+            <div class="card-sub">CY 2025 vs PY 2024</div>
+          </div>
+        </div>
+        <table class="yoy-table">
+          <thead>
+            <tr>
+              <th>Category</th>
+              <th>CY 2025</th>
+              <th>PY 2024</th>
+              <th>YoY</th>
+            </tr>
+          </thead>
+          <tbody id="yoyBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ── QUARTERLY PERFORMANCE ── -->
+    <div class="card">
+      <div class="card-head">
+        <div>
+          <div class="card-title">Quarterly Revenue Performance · 2023–2025</div>
+          <div class="card-sub">CQ Sales, PQ Sales & QoQ Growth across all 12 quarters</div>
+        </div>
+      </div>
+      <div class="ch ch-240"><canvas id="qtrChart"></canvas></div>
+    </div>
+
+    <!-- ── SEGMENT CARDS + PAYMENT ── -->
+    <div class="g2">
+      <div class="card">
+        <div class="card-head">
+          <div>
+            <div class="card-title">Customer Segment Revenue</div>
+            <div class="card-sub">CY 2025 vs PY 2024 per segment</div>
+          </div>
+        </div>
+        <div class="seg-grid">
+          <div class="seg-card" style="--seg-col:var(--yellow)">
+            <div class="seg-name">Regular</div>
+            <div class="seg-rev">₹67.4Cr</div>
+            <div class="seg-row">
+              <div class="seg-stat"><div class="seg-stat-l">CY 2025</div><div class="seg-stat-v">₹22.3Cr</div></div>
+              <div class="seg-stat"><div class="seg-stat-l">PY 2024</div><div class="seg-stat-v">₹22.7Cr</div></div>
+            </div>
+            <div class="seg-bar"><div class="seg-bar-fill" style="width:100%"></div></div>
+          </div>
+          <div class="seg-card" style="--seg-col:var(--blue)">
+            <div class="seg-name">Inactive</div>
+            <div class="seg-rev">₹66.4Cr</div>
+            <div class="seg-row">
+              <div class="seg-stat"><div class="seg-stat-l">CY 2025</div><div class="seg-stat-v">₹22.2Cr</div></div>
+              <div class="seg-stat"><div class="seg-stat-l">PY 2024</div><div class="seg-stat-v">₹21.6Cr</div></div>
+            </div>
+            <div class="seg-bar"><div class="seg-bar-fill" style="width:98.7%"></div></div>
+          </div>
+          <div class="seg-card" style="--seg-col:var(--green)">
+            <div class="seg-name">New</div>
+            <div class="seg-rev">₹66.0Cr</div>
+            <div class="seg-row">
+              <div class="seg-stat"><div class="seg-stat-l">CY 2025</div><div class="seg-stat-v">₹22.0Cr</div></div>
+              <div class="seg-stat"><div class="seg-stat-l">PY 2024</div><div class="seg-stat-v">₹22.2Cr</div></div>
+            </div>
+            <div class="seg-bar"><div class="seg-bar-fill" style="width:98.0%"></div></div>
+          </div>
+          <div class="seg-card" style="--seg-col:var(--purple)">
+            <div class="seg-name">Premium</div>
+            <div class="seg-rev">₹64.6Cr</div>
+            <div class="seg-row">
+              <div class="seg-stat"><div class="seg-stat-l">CY 2025</div><div class="seg-stat-v">₹21.2Cr</div></div>
+              <div class="seg-stat"><div class="seg-stat-l">PY 2024</div><div class="seg-stat-v">₹21.7Cr</div></div>
+            </div>
+            <div class="seg-bar"><div class="seg-bar-fill" style="width:95.9%"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <div>
+            <div class="card-title">Payment Method Revenue</div>
+            <div class="card-sub">Share of total ₹264.4Cr across 4 methods</div>
+          </div>
+        </div>
+        <div class="donut-wrap" style="height:180px">
+          <canvas id="payDonut" style="max-width:180px;max-height:180px"></canvas>
+          <div class="donut-center">
+            <div class="donut-center-val" style="font-size:18px">4</div>
+            <div class="donut-center-lbl">Methods</div>
+          </div>
+        </div>
+        <div class="pay-grid" style="margin-top:12px">
+          <div class="pay-card">
+            <div class="pay-emoji">👛</div>
+            <div class="pay-info">
+              <div class="pay-name">Wallet</div>
+              <div class="pay-rev">₹67.4Cr</div>
+              <div class="pay-share">25.5% share</div>
+            </div>
+          </div>
+          <div class="pay-card">
+            <div class="pay-emoji">📱</div>
+            <div class="pay-info">
+              <div class="pay-name">UPI</div>
+              <div class="pay-rev">₹66.0Cr</div>
+              <div class="pay-share">24.9% share</div>
+            </div>
+          </div>
+          <div class="pay-card">
+            <div class="pay-emoji">💵</div>
+            <div class="pay-info">
+              <div class="pay-name">Cash</div>
+              <div class="pay-rev">₹65.6Cr</div>
+              <div class="pay-share">24.8% share</div>
+            </div>
+          </div>
+          <div class="pay-card">
+            <div class="pay-emoji">💳</div>
+            <div class="pay-info">
+              <div class="pay-name">Card</div>
+              <div class="pay-rev">₹65.4Cr</div>
+              <div class="pay-share">24.7% share</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── TOP AREAS + TOP PRODUCTS ── -->
+    <div class="g2">
+      <div class="card">
+        <div class="card-head">
+          <div>
+            <div class="card-title">Top Areas by Revenue</div>
+            <div class="card-sub">CY 2025 vs PY 2024 · All 250+ cities ranked</div>
+          </div>
+          <div class="tag">Top 10</div>
+        </div>
+        <div class="bar-list city-scroll" id="areaList"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <div>
+            <div class="card-title">Top Products by Revenue</div>
+            <div class="card-sub">Highest performing SKUs across all categories</div>
+          </div>
+        </div>
+        <div class="prod-list" id="prodList"></div>
+      </div>
+    </div>
+
+    <!-- ── SEGMENT × CATEGORY HEATMAP ── -->
+    <div class="card">
+      <div class="card-head">
+        <div>
+          <div class="card-title">Category × Segment Revenue Matrix</div>
+          <div class="card-sub">Revenue (₹Cr) by category across all 4 customer segments — deeper color = higher revenue</div>
+        </div>
+      </div>
+      <div class="heatmap-wrap">
+        <table class="heatmap" id="heatmapTable"></table>
+      </div>
+    </div>
+
+    <!-- ── CATEGORY TREND LINES ── -->
+    <div class="card">
+      <div class="card-head">
+        <div>
+          <div class="card-title">Category Revenue: 3-Year Trajectory</div>
+          <div class="card-sub">2023 → 2024 → 2025 per category (₹Cr)</div>
+        </div>
+      </div>
+      <div class="ch ch-260"><canvas id="catTrendChart"></canvas></div>
+    </div>
+
+  </div><!-- /page -->
+</main>
+</div><!-- /layout -->
+
+<script>
+/* ═══════════════════════════════════════════════
+   DATA FROM POWER BI
+═══════════════════════════════════════════════ */
+const COLORS = {
+  yellow:'#f5c842', yellow2:'#ffd95a',
+  green:'#3ddc84', red:'#ff5e5e',
+  blue:'#4da3ff', orange:'#ff8c42',
+  purple:'#a78bfa', teal:'#2dd4bf',
+  pink:'#f472b6', indigo:'#818cf8',
+  lime:'#a3e635'
+};
+
+const catColors = [
+  COLORS.yellow,COLORS.green,COLORS.blue,COLORS.orange,
+  COLORS.purple,COLORS.teal,COLORS.pink,COLORS.indigo,
+  COLORS.red,COLORS.lime,'#fb923c'
+];
+
+Chart.defaults.font.family = "'Cabinet Grotesk', sans-serif";
+Chart.defaults.color = '#8b91a0';
+
+const tooltip = {
+  backgroundColor:'#1c2028',
+  titleColor:'#eef0f4',
+  bodyColor:'#8b91a0',
+  borderColor:'rgba(255,255,255,0.08)',
+  borderWidth:1,
+  padding:12,
+  cornerRadius:10,
+  displayColors:true,
+  boxWidth:8,boxHeight:8,boxPadding:4,
+};
+
+/* ── MONTHLY TREND DATA ── */
+const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+const rev2023 = [76.5,68.8,79.3,74.6,77.6,72.7,74.0,73.4,70.5,73.6,70.9,73.0];
+const rev2024 = [77.2,67.6,75.1,71.9,73.2,78.8,74.2,73.2,75.8,72.0,70.0,72.9];
+const rev2025 = [76.5,63.3,74.4,72.6,73.1,70.4,74.7,82.2,74.6,73.2,70.1,71.6];
+
+const qtrLabels = ['Q1 23','Q2 23','Q3 23','Q4 23','Q1 24','Q2 24','Q3 24','Q4 24','Q1 25','Q2 25','Q3 25','Q4 25'];
+const qtrRevenue = [224.7,225.0,218.0,217.5,219.9,223.9,223.1,214.9,214.2,216.1,231.5,215.0];
+
+/* ── CATEGORY DATA ── */
+const categories = ['Instant & Frozen','Baby Care','Cold Drinks','Pet Care','Fruits & Veg','Grocery','Snacks','Household','Dairy','Personal Care','Pharmacy'];
+const catCY   = [111.1,111.0,101.4,88.4,89.5,73.3,71.3,67.5,56.4,54.6,52.4];
+const catPY   = [112.0,111.7,100.4,91.1,87.7,72.8,72.1,67.9,59.2,55.0,52.0];
+const catTotal= [335.4,334.6,302.9,271.8,266.8,218.2,214.7,202.6,172.3,165.7,158.6];
+
+/* ── AREA DATA ── */
+const areaData = [
+  {name:'Ghaziabad',rev:17.13,cy:6.48,py:5.36},
+  {name:'Aurangabad',rev:15.11,cy:5.74,py:5.32},
+  {name:'Kharagpur',rev:13.33,cy:3.62,py:5.10},
+  {name:'Bhopal',rev:11.49,cy:3.53,py:3.52},
+  {name:'Ichalkaranji',rev:11.20,cy:3.45,py:4.10},
+  {name:'Gulbarga',rev:11.06,cy:2.88,py:4.24},
+  {name:'Shimoga',rev:11.03,cy:3.31,py:4.65},
+  {name:'Sri Ganganagar',rev:11.03,cy:3.86,py:3.65},
+  {name:'Nagaon',rev:11.01,cy:4.49,py:3.67},
+  {name:'Aizawl',rev:10.87,cy:3.39,py:3.65},
+];
+
+/* ── PRODUCT DATA ── */
+const products = [
+  {name:'ea sequi',cat:'Baby Care',rev:13.78},
+  {name:'corporis repudiandae',cat:'Baby Care',rev:13.54},
+  {name:'voluptas earum',cat:'Grocery & Staples',rev:13.53},
+  {name:'facere nesciunt',cat:'Snacks & Munchies',rev:13.39},
+  {name:'blanditiis sit',cat:'Cold Drinks & Juices',rev:13.33},
+  {name:'perferendis magnam',cat:'Personal Care',rev:13.18},
+  {name:'maiores esse',cat:'Fruits & Vegetables',rev:13.19},
+  {name:'aperiam explicabo',cat:'Household Care',rev:13.19},
+];
+
+/* ── SEGMENT × CATEGORY MATRIX ── */
+const segCatData = {
+  'Regular':    {IF:84.7,BC:85.6,CD:74.1,PC_:68.1,FV:68.3,GS:56.3,SM:56.0,HC:51.4,DB:44.6,PeCare:43.0,Ph:41.6},
+  'Inactive':   {IF:83.9,BC:84.7,CD:77.4,PC_:69.3,FV:65.8,GS:54.5,SM:52.7,HC:50.3,DB:42.6,PeCare:42.3,Ph:40.4},
+  'New':        {IF:84.3,BC:83.0,CD:75.8,PC_:68.4,FV:66.5,GS:53.5,SM:54.2,HC:51.3,DB:43.0,PeCare:41.2,Ph:38.7},
+  'Premium':    {IF:82.4,BC:81.3,CD:75.6,PC_:66.1,FV:66.2,GS:54.0,SM:51.8,HC:49.6,DB:42.1,PeCare:39.1,Ph:38.0},
+};
+
+/* ═══════════════════════════════════════════════
+   CHART 1 — MONTHLY TREND
+═══════════════════════════════════════════════ */
+let trendChart = null;
+
+function buildMonthly(){
+  return {
+    labels: months,
+    datasets:[
+      {label:'2023',data:rev2023,borderColor:COLORS.yellow,backgroundColor:'rgba(245,200,66,.06)',fill:true,tension:.4,borderWidth:2,pointRadius:0,pointHoverRadius:4},
+      {label:'2024',data:rev2024,borderColor:COLORS.blue,backgroundColor:'rgba(77,163,255,.06)',fill:true,tension:.4,borderWidth:2,pointRadius:0,pointHoverRadius:4},
+      {label:'2025',data:rev2025,borderColor:COLORS.green,backgroundColor:'rgba(61,220,132,.06)',fill:true,tension:.4,borderWidth:2,pointRadius:0,pointHoverRadius:4},
+    ]
+  };
+}
+function buildQuarterly(){
+  return {
+    labels:['Q1','Q2','Q3','Q4'],
+    datasets:[
+      {label:'2023',data:[224.7,225.0,218.0,217.5],borderColor:COLORS.yellow,backgroundColor:'rgba(245,200,66,.06)',fill:true,tension:.4,borderWidth:2,pointRadius:3,pointHoverRadius:5},
+      {label:'2024',data:[219.9,223.9,223.1,214.9],borderColor:COLORS.blue,backgroundColor:'rgba(77,163,255,.06)',fill:true,tension:.4,borderWidth:2,pointRadius:3,pointHoverRadius:5},
+      {label:'2025',data:[214.2,216.1,231.5,215.0],borderColor:COLORS.green,backgroundColor:'rgba(61,220,132,.06)',fill:true,tension:.4,borderWidth:2,pointRadius:3,pointHoverRadius:5},
+    ]
+  };
+}
+function buildYearly(){
+  return {
+    labels:['2023','2024','2025'],
+    datasets:[{
+      label:'Revenue (₹Cr)',
+      data:[885.1,881.8,876.8],
+      borderColor:COLORS.yellow,
+      backgroundColor:'rgba(245,200,66,.08)',
+      fill:true,tension:.4,borderWidth:2.5,
+      pointRadius:5,pointHoverRadius:7,
+      pointBackgroundColor:COLORS.yellow,
+    }]
+  };
+}
+
+const trendOpts = {
+  responsive:true,maintainAspectRatio:false,
+  plugins:{legend:{display:false},tooltip:{...tooltip,callbacks:{label:ctx=>`₹${ctx.parsed.y.toFixed(1)}Cr`}}},
+  scales:{
+    x:{grid:{color:'rgba(255,255,255,.04)'},ticks:{font:{size:11}}},
+    y:{grid:{color:'rgba(255,255,255,.04)'},ticks:{callback:v=>`₹${v}Cr`,font:{size:11}}}
+  },
+  interaction:{mode:'index',intersect:false},
+};
+
+function switchTrend(type, el){
+  document.querySelectorAll('.t-tab').forEach(t=>t.classList.remove('on'));
+  el.classList.add('on');
+  let data = type==='monthly'?buildMonthly():type==='quarterly'?buildQuarterly():buildYearly();
+  trendChart.data = data;
+  trendChart.update('active');
+}
+
+trendChart = new Chart(document.getElementById('trendChart'),{
+  type:'line', data:buildMonthly(), options:trendOpts
+});
+
+/* ═══════════════════════════════════════════════
+   CHART 2 — YEAR DONUT
+═══════════════════════════════════════════════ */
+new Chart(document.getElementById('yearDonut'),{
+  type:'doughnut',
+  data:{
+    labels:['2023','2024','2025'],
+    datasets:[{
+      data:[885.1,881.8,876.8],
+      backgroundColor:[COLORS.yellow,COLORS.blue,COLORS.green],
+      borderColor:'#0f1117',borderWidth:4,hoverOffset:8,
+    }]
+  },
+  options:{
+    responsive:true,maintainAspectRatio:false,cutout:'72%',
+    plugins:{
+      legend:{display:false},
+      tooltip:{...tooltip,callbacks:{label:ctx=>`₹${ctx.parsed.toFixed(1)}Cr`}}
+    }
+  }
+});
+
+/* ═══════════════════════════════════════════════
+   CHART 3 — CATEGORY BAR (CY vs PY)
+═══════════════════════════════════════════════ */
+new Chart(document.getElementById('catChart'),{
+  type:'bar',
+  data:{
+    labels:categories,
+    datasets:[
+      {label:'CY 2025 (₹Cr)',data:catCY,backgroundColor:COLORS.yellow,borderRadius:{topLeft:5,topRight:5},borderSkipped:false},
+      {label:'PY 2024 (₹Cr)',data:catPY,backgroundColor:'rgba(77,163,255,0.5)',borderRadius:{topLeft:5,topRight:5},borderSkipped:false},
+    ]
+  },
+  options:{
+    responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{labels:{boxWidth:10,font:{size:11},color:'#8b91a0'}},tooltip:{...tooltip,callbacks:{label:ctx=>`₹${ctx.parsed.y.toFixed(1)}Cr`}}},
+    scales:{
+      x:{grid:{display:false},ticks:{font:{size:10},maxRotation:35}},
+      y:{grid:{color:'rgba(255,255,255,.04)'},ticks:{callback:v=>`₹${v}Cr`,font:{size:11}}}
+    }
+  }
+});
+
+/* ═══════════════════════════════════════════════
+   CHART 4 — QUARTERLY BAR
+═══════════════════════════════════════════════ */
+new Chart(document.getElementById('qtrChart'),{
+  type:'bar',
+  data:{
+    labels:qtrLabels,
+    datasets:[{
+      label:'Quarterly Revenue (₹Cr)',
+      data:qtrRevenue,
+      backgroundColor:qtrLabels.map((l,i)=>{
+        if(i>=8) return COLORS.green;
+        if(i>=4) return COLORS.blue;
+        return COLORS.yellow;
+      }),
+      borderRadius:{topLeft:6,topRight:6},
+      borderSkipped:false,
+    }]
+  },
+  options:{
+    responsive:true,maintainAspectRatio:false,
+    plugins:{
+      legend:{display:false},
+      tooltip:{...tooltip,callbacks:{label:ctx=>`₹${ctx.parsed.y.toFixed(1)}Cr`}}
+    },
+    scales:{
+      x:{grid:{display:false},ticks:{font:{size:11}}},
+      y:{grid:{color:'rgba(255,255,255,.04)'},ticks:{callback:v=>`₹${v}Cr`,font:{size:11}},min:180}
+    }
+  }
+});
+
+/* ═══════════════════════════════════════════════
+   CHART 5 — PAYMENT DONUT
+═══════════════════════════════════════════════ */
+new Chart(document.getElementById('payDonut'),{
+  type:'doughnut',
+  data:{
+    labels:['Wallet','UPI','Cash','Card'],
+    datasets:[{
+      data:[67.4,66.0,65.6,65.4],
+      backgroundColor:[COLORS.yellow,COLORS.blue,COLORS.green,COLORS.orange],
+      borderColor:'#0f1117',borderWidth:4,hoverOffset:6,
+    }]
+  },
+  options:{
+    responsive:true,maintainAspectRatio:false,cutout:'68%',
+    plugins:{legend:{display:false},tooltip:{...tooltip,callbacks:{label:ctx=>`₹${ctx.parsed.toFixed(1)}Cr`}}}
+  }
+});
+
+/* ═══════════════════════════════════════════════
+   CHART 6 — CATEGORY TREND LINES (3-year)
+═══════════════════════════════════════════════ */
+const catTrendData = [
+  {cat:'Instant & Frozen',y:[112.3,112.0,111.1]},
+  {cat:'Baby Care',y:[112.0,111.7,111.0]},
+  {cat:'Cold Drinks',y:[101.1,100.4,101.4]},
+  {cat:'Pet Care',y:[92.3,91.1,88.4]},
+  {cat:'Fruits & Veg',y:[89.6,87.7,89.5]},
+  {cat:'Grocery',y:[72.1,72.8,73.3]},
+  {cat:'Snacks',y:[71.4,72.1,71.3]},
+  {cat:'Household',y:[67.2,67.9,67.5]},
+  {cat:'Dairy',y:[56.7,59.2,56.4]},
+  {cat:'Personal Care',y:[56.1,55.0,54.6]},
+  {cat:'Pharmacy',y:[54.2,52.0,52.4]},
+];
+
+new Chart(document.getElementById('catTrendChart'),{
+  type:'line',
+  data:{
+    labels:['2023','2024','2025'],
+    datasets:catTrendData.map((d,i)=>({
+      label:d.cat,data:d.y,
+      borderColor:catColors[i],
+      backgroundColor:'transparent',
+      tension:.4,borderWidth:2,
+      pointRadius:4,pointHoverRadius:6,
+      pointBackgroundColor:catColors[i],
+    }))
+  },
+  options:{
+    responsive:true,maintainAspectRatio:false,
+    plugins:{
+      legend:{labels:{boxWidth:10,font:{size:10},color:'#8b91a0',padding:12}},
+      tooltip:{...tooltip,callbacks:{label:ctx=>`${ctx.dataset.label}: ₹${ctx.parsed.y.toFixed(1)}Cr`}}
+    },
+    scales:{
+      x:{grid:{display:false},ticks:{font:{size:12}}},
+      y:{grid:{color:'rgba(255,255,255,.04)'},ticks:{callback:v=>`₹${v}Cr`,font:{size:11}},min:40}
+    },
+    interaction:{mode:'index',intersect:false},
+  }
+});
+
+/* ═══════════════════════════════════════════════
+   YOY TABLE
+═══════════════════════════════════════════════ */
+(function(){
+  const rows = [
+    {cat:'Instant & Frozen',cy:111.1,py:112.0,col:'#f5c842'},
+    {cat:'Baby Care',cy:111.0,py:111.7,col:'#3ddc84'},
+    {cat:'Cold Drinks',cy:101.4,py:100.4,col:'#4da3ff'},
+    {cat:'Pet Care',cy:88.4,py:91.1,col:'#ff8c42'},
+    {cat:'Fruits & Veg',cy:89.5,py:87.7,col:'#a78bfa'},
+    {cat:'Grocery',cy:73.3,py:72.8,col:'#2dd4bf'},
+    {cat:'Snacks',cy:71.3,py:72.1,col:'#f472b6'},
+    {cat:'Household',cy:67.5,py:67.9,col:'#818cf8'},
+    {cat:'Dairy',cy:56.4,py:59.2,col:'#ff5e5e'},
+    {cat:'Personal Care',cy:54.6,py:55.0,col:'#a3e635'},
+    {cat:'Pharmacy',cy:52.4,py:52.0,col:'#fb923c'},
+  ];
+
+  const tbody = document.getElementById('yoyBody');
+  rows.forEach(r=>{
+    const pct = ((r.cy-r.py)/r.py*100).toFixed(1);
+    const up = pct >= 0;
+    tbody.innerHTML+=`
+      <tr>
+        <td class="cat-name"><span class="dot" style="background:${r.col}"></span>${r.cat}</td>
+        <td class="val">₹${r.cy.toFixed(1)}Cr</td>
+        <td class="val">₹${r.py.toFixed(1)}Cr</td>
+        <td><span class="yoy-change ${up?'up':'down'}">${up?'↑':'↓'} ${Math.abs(pct)}%</span></td>
+      </tr>`;
+  });
+})();
+
+/* ═══════════════════════════════════════════════
+   AREA LIST
+═══════════════════════════════════════════════ */
+(function(){
+  const el = document.getElementById('areaList');
+  const max = areaData[0].rev;
+  areaData.forEach((a,i)=>{
+    const pct = (a.cy-a.py)/a.py*100;
+    const up = pct>=0;
+    const fillW = (a.rev/max*100).toFixed(1);
+    const fillColor = i===0?COLORS.yellow:i<3?COLORS.green:COLORS.blue;
+    el.innerHTML+=`
+      <div class="bl-item">
+        <div class="bl-meta">
+          <span class="bl-rank">${i+1}</span>
+          <span class="bl-name">${a.name}</span>
+          <span class="bl-val">₹${a.rev.toFixed(2)}Cr</span>
+          <span class="bl-pct" style="color:${up?'var(--green)':'var(--red)'}">${up?'↑':'↓'}${Math.abs(pct).toFixed(1)}%</span>
+        </div>
+        <div class="bl-track"><div class="bl-fill" style="width:${fillW}%;background:${fillColor}"></div></div>
+      </div>`;
+  });
+})();
+
+/* ═══════════════════════════════════════════════
+   PRODUCT LIST
+═══════════════════════════════════════════════ */
+(function(){
+  const el = document.getElementById('prodList');
+  const max = products[0].rev;
+  const rankCol = ['gold','silver','bronze'];
+  products.forEach((p,i)=>{
+    const w = (p.rev/max*100).toFixed(1);
+    el.innerHTML+=`
+      <div class="prod-item">
+        <div class="prod-rank ${rankCol[i]||''}">${i+1}</div>
+        <div class="prod-info">
+          <div class="prod-name">${p.name}</div>
+          <div class="prod-cat">${p.cat}</div>
+        </div>
+        <div class="prod-right">
+          <div class="prod-rev">₹${p.rev.toFixed(2)}Cr</div>
+          <div class="prod-bar-wrap"><div class="prod-bar-fill" style="width:${w}%"></div></div>
+        </div>
+      </div>`;
+  });
+})();
+
+/* ═══════════════════════════════════════════════
+   HEATMAP TABLE
+═══════════════════════════════════════════════ */
+(function(){
+  const segs = ['Regular','Inactive','New','Premium'];
+  const catShort = ['IF','BC','CD','PC_','FV','GS','SM','HC','DB','PeCare','Ph'];
+  const catFull  = ['Inst & Frz','Baby Care','Cold Drk','Pet Care','Fruits&Veg','Grocery','Snacks','Household','Dairy','Pers Care','Pharmacy'];
+
+  // find max value for intensity
+  let max=0;
+  segs.forEach(s=>catShort.forEach(c=>{if(segCatData[s][c]>max)max=segCatData[s][c];}));
+
+  let html='<thead><tr><th>Category</th>';
+  segs.forEach(s=>{html+=`<th>${s}</th>`});
+  html+='</tr></thead><tbody>';
+
+  catFull.forEach((cat,ci)=>{
+    html+=`<tr><td>${cat}</td>`;
+    segs.forEach(s=>{
+      const v=segCatData[s][catShort[ci]];
+      const intensity=(v/max);
+      const bg=`rgba(245,200,66,${(intensity*.55+.04).toFixed(2)})`;
+      const col=intensity>.6?'#07080a':'#eef0f4';
+      html+=`<td><span class="hm-cell" style="background:${bg};color:${col}">₹${v.toFixed(0)}Cr</span></td>`;
+    });
+    html+='</tr>';
+  });
+  html+='</tbody>';
+  document.getElementById('heatmapTable').innerHTML=html;
+})();
+
+/* ═══════════════════════════════════════════════
+   BAR FILL ANIMATION ON LOAD
+═══════════════════════════════════════════════ */
+window.addEventListener('load',()=>{
+  document.querySelectorAll('.bl-fill,.prod-bar-fill,.seg-bar-fill').forEach(el=>{
+    const w=el.style.width;
+    el.style.width='0';
+    requestAnimationFrame(()=>{
+      setTimeout(()=>{el.style.width=w;},200);
+    });
+  });
+});
+</script>
+</body>
+</html>

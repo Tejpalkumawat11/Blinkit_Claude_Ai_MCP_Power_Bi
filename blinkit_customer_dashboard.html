@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Blinkit — Customer Overview Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Figtree:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{
+  --bg:#f5f2ec;--surface:#ffffff;--surface2:#faf8f4;--surface3:#f0ede6;
+  --border:#e8e3d8;--border2:#d4cec0;
+  --ink:#1a1714;--ink2:#4a4540;--ink3:#8a8278;
+  --accent:#2d6a4f;--accent2:#52b788;--accent3:#b7e4c7;
+  --gold:#c8973a;--gold2:#f4d06f;--red:#c0392b;--blue:#2471a3;
+  --seg1:#2d6a4f;--seg2:#c8973a;--seg3:#2471a3;--seg4:#8e44ad;
+}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+html{font-size:14px}
+body{font-family:'Figtree',sans-serif;background:var(--bg);color:var(--ink);min-height:100vh}
+::-webkit-scrollbar{width:4px}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:99px}
+
+/* LAYOUT */
+.layout{display:flex;min-height:100vh}
+
+/* SIDEBAR */
+.sidebar{
+  width:232px;flex-shrink:0;background:var(--ink);
+  display:flex;flex-direction:column;
+  position:fixed;top:0;left:0;bottom:0;z-index:100;
+  overflow:hidden;
+}
+.sidebar::before{
+  content:'';position:absolute;bottom:-60px;right:-60px;
+  width:200px;height:200px;border-radius:50%;
+  background:radial-gradient(circle,rgba(82,183,136,.15) 0%,transparent 70%);
+  pointer-events:none;
+}
+.sb-logo{padding:28px 24px 24px;border-bottom:1px solid rgba(255,255,255,.08)}
+.sb-logo-wrap{display:flex;align-items:center;gap:12px}
+.sb-logo-mark{
+  width:40px;height:40px;border-radius:12px;
+  background:linear-gradient(135deg,var(--accent2) 0%,var(--accent) 100%);
+  display:flex;align-items:center;justify-content:center;font-size:20px;
+}
+.sb-brand-name{font-family:'Instrument Serif',serif;font-size:20px;color:#fff;letter-spacing:-.3px}
+.sb-brand-sub{font-size:10px;color:rgba(255,255,255,.4);letter-spacing:1.5px;text-transform:uppercase;margin-top:2px}
+.sb-nav{flex:1;overflow-y:auto;padding:12px 12px 0}
+.sb-label{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,.3);padding:16px 12px 8px;font-weight:700}
+.sb-item{display:flex;align-items:center;gap:11px;padding:10px 14px;border-radius:10px;cursor:pointer;transition:all .2s;color:rgba(255,255,255,.5);font-size:13px;font-weight:500;margin-bottom:2px;border:1px solid transparent}
+.sb-item:hover{background:rgba(255,255,255,.06);color:rgba(255,255,255,.8)}
+.sb-item.active{background:rgba(82,183,136,.15);color:var(--accent2);border-color:rgba(82,183,136,.2)}
+.sb-item.active::before{content:'';position:absolute;left:0;width:2px;height:28px;background:var(--accent2);border-radius:0 2px 2px 0}
+.sb-item{position:relative}
+.sb-icon{font-size:15px;width:18px;text-align:center}
+.sb-footer{padding:16px 24px;border-top:1px solid rgba(255,255,255,.08)}
+.sb-live{display:flex;align-items:center;gap:8px;font-size:11px;color:rgba(255,255,255,.35)}
+.sb-dot{width:6px;height:6px;border-radius:50%;background:var(--accent2);animation:pdot 2s ease-in-out infinite}
+@keyframes pdot{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* MAIN */
+.main{margin-left:232px;flex:1;display:flex;flex-direction:column}
+
+/* TOPBAR */
+.topbar{
+  background:rgba(245,242,236,.92);backdrop-filter:blur(16px);
+  border-bottom:1px solid var(--border);
+  padding:0 36px;height:64px;
+  display:flex;align-items:center;justify-content:space-between;
+  position:sticky;top:0;z-index:50;
+}
+.tb-title{font-family:'Instrument Serif',serif;font-size:20px;color:var(--ink);letter-spacing:-.3px}
+.tb-sub{font-size:11px;color:var(--ink3);margin-top:2px}
+.tb-right{display:flex;gap:8px}
+.chip{background:var(--surface);border:1px solid var(--border);padding:7px 14px;border-radius:8px;font-size:12px;color:var(--ink2);cursor:pointer;transition:all .2s;font-weight:500}
+.chip:hover,.chip.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+
+/* PAGE */
+.page{padding:32px 36px;display:flex;flex-direction:column;gap:24px}
+
+/* KPI */
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+.kpi{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:16px;padding:22px 24px 18px;position:relative;overflow:hidden;
+  transition:all .25s;cursor:default;
+}
+.kpi:hover{transform:translateY(-2px);box-shadow:0 8px 32px rgba(0,0,0,.08);border-color:var(--border2)}
+.kpi-stripe{position:absolute;top:0;left:0;right:0;height:3px;background:var(--kc,var(--accent))}
+.kpi-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px}
+.kpi-label{font-size:11px;font-weight:700;color:var(--ink3);text-transform:uppercase;letter-spacing:.7px}
+.kpi-icon{width:36px;height:36px;border-radius:10px;background:var(--surface3);display:flex;align-items:center;justify-content:center;font-size:17px;border:1px solid var(--border)}
+.kpi-val{font-family:'Instrument Serif',serif;font-size:32px;color:var(--ink);line-height:1;letter-spacing:-1px}
+.kpi-val sub{font-size:15px;color:var(--ink3);font-family:'Figtree',sans-serif;font-weight:400}
+.kpi-meta{margin-top:10px;display:flex;align-items:center;gap:7px}
+.badge{display:inline-flex;align-items:center;gap:3px;padding:3px 8px;border-radius:99px;font-size:11px;font-weight:700}
+.badge.up{background:rgba(45,106,79,.1);color:var(--accent)}
+.badge.dn{background:rgba(192,57,43,.1);color:var(--red)}
+.badge.neu{background:var(--surface3);color:var(--ink3)}
+.kpi-sub-txt{font-size:11px;color:var(--ink3)}
+
+/* CARDS */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:24px;overflow:hidden;transition:border-color .2s}
+.card:hover{border-color:var(--border2)}
+.ch{position:relative}
+.ch-200{height:200px}.ch-220{height:220px}.ch-240{height:240px}.ch-260{height:260px}.ch-280{height:280px}.ch-300{height:300px}
+.card-head{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px}
+.card-title{font-family:'Instrument Serif',serif;font-size:17px;color:var(--ink);letter-spacing:-.2px}
+.card-sub{font-size:11px;color:var(--ink3);margin-top:4px}
+.tag{background:var(--surface3);border:1px solid var(--border);border-radius:7px;padding:4px 10px;font-size:11px;color:var(--ink3);cursor:pointer;font-weight:500}
+
+/* GRIDS */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px}
+.g-main{display:grid;grid-template-columns:1.5fr 1fr;gap:20px}
+.g-main2{display:grid;grid-template-columns:1fr 1.5fr;gap:20px}
+
+/* SEGMENT CARDS */
+.seg-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.seg-card{
+  border-radius:14px;padding:20px;position:relative;overflow:hidden;
+  border:1px solid transparent;cursor:default;transition:all .2s;
+}
+.seg-card:hover{transform:translateY(-2px);box-shadow:0 6px 24px rgba(0,0,0,.08)}
+.seg-card.s1{background:linear-gradient(135deg,rgba(45,106,79,.08) 0%,rgba(45,106,79,.03) 100%);border-color:rgba(45,106,79,.2)}
+.seg-card.s2{background:linear-gradient(135deg,rgba(200,151,58,.08) 0%,rgba(200,151,58,.03) 100%);border-color:rgba(200,151,58,.2)}
+.seg-card.s3{background:linear-gradient(135deg,rgba(36,113,163,.08) 0%,rgba(36,113,163,.03) 100%);border-color:rgba(36,113,163,.2)}
+.seg-card.s4{background:linear-gradient(135deg,rgba(142,68,173,.08) 0%,rgba(142,68,173,.03) 100%);border-color:rgba(142,68,173,.2)}
+.seg-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;margin-bottom:12px}
+.seg-rev{font-family:'Instrument Serif',serif;font-size:24px;color:var(--ink);letter-spacing:-.5px}
+.seg-stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+.seg-stat{background:rgba(255,255,255,.7);border-radius:8px;padding:8px 10px}
+.seg-stat-l{font-size:10px;color:var(--ink3);margin-bottom:2px}
+.seg-stat-v{font-size:13px;font-weight:700;color:var(--ink2)}
+.seg-indicator{margin-top:12px;height:3px;border-radius:99px;background:var(--border)}
+.seg-indicator-fill{height:100%;border-radius:99px}
+
+/* AREA TABLE */
+.area-tbl{width:100%;border-collapse:collapse}
+.area-tbl th{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--ink3);padding:0 0 12px;text-align:left;border-bottom:2px solid var(--border)}
+.area-tbl th:not(:first-child){text-align:right}
+.area-tbl td{padding:10px 0;font-size:12px;border-bottom:1px solid var(--border);vertical-align:middle}
+.area-tbl tr:last-child td{border-bottom:none}
+.area-tbl td:not(:first-child){text-align:right;font-weight:600}
+.area-tbl td.city{color:var(--ink2);font-weight:500;display:flex;align-items:center;gap:8px}
+.rank-num{font-family:'Instrument Serif',serif;font-size:15px;color:var(--ink3);width:20px}
+
+/* CUSTOMER JOURNEY */
+.journey-wrap{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:0;position:relative;margin-top:8px}
+.journey-wrap::before{content:'';position:absolute;top:28px;left:60px;right:60px;height:2px;background:var(--border2);z-index:0}
+.jstep{display:flex;flex-direction:column;align-items:center;gap:10px;position:relative;z-index:1}
+.jstep-circle{width:56px;height:56px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:22px;border:2px solid var(--border);background:var(--surface);transition:all .2s}
+.jstep:hover .jstep-circle{border-color:var(--accent);background:rgba(45,106,79,.08)}
+.jstep-label{font-size:11px;font-weight:600;color:var(--ink2);text-align:center}
+.jstep-val{font-family:'Instrument Serif',serif;font-size:18px;color:var(--ink);text-align:center}
+.jstep-sub{font-size:10px;color:var(--ink3);text-align:center}
+
+/* PAYMENT TABLE */
+.pay-rows{display:flex;flex-direction:column;gap:14px;margin-top:8px}
+.pay-row{display:flex;align-items:center;gap:14px}
+.pay-icon{font-size:22px;width:36px;text-align:center}
+.pay-info{flex:1}
+.pay-name{font-size:13px;font-weight:600;color:var(--ink2)}
+.pay-rev{font-size:11px;color:var(--ink3)}
+.pay-track{flex:2;height:6px;background:var(--surface3);border-radius:99px;overflow:hidden}
+.pay-fill{height:100%;border-radius:99px;transition:width 1.2s cubic-bezier(.23,1,.32,1)}
+.pay-pct{font-family:'Instrument Serif',serif;font-size:14px;font-weight:600;color:var(--ink);width:36px;text-align:right}
+
+/* LEGEND */
+.legend{display:flex;flex-direction:column;gap:10px;margin-top:14px}
+.leg-item{display:flex;align-items:center;gap:10px;font-size:12px;color:var(--ink2)}
+.leg-dot{width:9px;height:9px;border-radius:3px;flex-shrink:0}
+.leg-val{margin-left:auto;font-weight:700;color:var(--ink);font-size:13px}
+
+/* DONUT */
+.donut-wrap{position:relative;height:200px;display:flex;align-items:center;justify-content:center}
+.donut-center{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;pointer-events:none}
+.donut-center-val{font-family:'Instrument Serif',serif;font-size:26px;color:var(--ink);line-height:1}
+.donut-center-lbl{font-size:10px;color:var(--ink3);margin-top:3px}
+
+/* HEATMAP CITY */
+.city-heat{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:8px}
+.city-cell{background:var(--surface3);border-radius:10px;padding:10px 8px;text-align:center;transition:all .2s;cursor:default;border:1px solid var(--border)}
+.city-cell:hover{transform:translateY(-2px);box-shadow:0 4px 16px rgba(0,0,0,.07)}
+.city-name{font-size:10px;font-weight:600;color:var(--ink3);margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.city-rev{font-family:'Instrument Serif',serif;font-size:14px;color:var(--ink)}
+
+@keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+.kpi{animation:fadeUp .5s ease both}.kpi:nth-child(1){animation-delay:.05s}.kpi:nth-child(2){animation-delay:.1s}.kpi:nth-child(3){animation-delay:.15s}.kpi:nth-child(4){animation-delay:.2s}
+.card{animation:fadeUp .5s ease both;animation-delay:.25s}
+</style>
+</head>
+<body>
+<div class="layout">
+
+<aside class="sidebar">
+  <div class="sb-logo">
+    <div class="sb-logo-wrap">
+      <div class="sb-logo-mark">⚡</div>
+      <div><div class="sb-brand-name">Blinkit</div><div class="sb-brand-sub">Customer Intelligence</div></div>
+    </div>
+  </div>
+  <div class="sb-nav">
+    <div class="sb-label">Dashboards</div>
+    <div class="sb-item"><span class="sb-icon">📊</span>Sales Overview</div>
+    <div class="sb-item active"><span class="sb-icon">👥</span>Customer Overview</div>
+    <div class="sb-item"><span class="sb-icon">📣</span>Marketing</div>
+    <div class="sb-item"><span class="sb-icon">🏪</span>Inventory</div>
+    <div class="sb-item"><span class="sb-icon">🚚</span>Delivery & Feedback</div>
+    <div class="sb-label">Analytics</div>
+    <div class="sb-item"><span class="sb-icon">🗺️</span>City Heatmap</div>
+    <div class="sb-item"><span class="sb-icon">🔄</span>Segment Trends</div>
+    <div class="sb-item"><span class="sb-icon">↗️</span>Export</div>
+  </div>
+  <div class="sb-footer">
+    <div class="sb-live"><span class="sb-dot"></span>Power BI · Master_Table</div>
+  </div>
+</aside>
+
+<main class="main">
+  <div class="topbar">
+    <div>
+      <div class="tb-title">Customer Overview</div>
+      <div class="tb-sub">Master_Table · blinkit_customers · Calendar · All DAX Measures · 2023–2025</div>
+    </div>
+    <div class="tb-right">
+      <div class="chip on">All Segments</div>
+      <div class="chip">2025</div>
+      <div class="chip">⬇ Export</div>
+    </div>
+  </div>
+
+  <div class="page">
+
+    <!-- KPI ROW -->
+    <div class="kpi-grid">
+      <div class="kpi" style="--kc:var(--accent)">
+        <div class="kpi-stripe"></div>
+        <div class="kpi-top"><div class="kpi-label">Total Customers</div><div class="kpi-icon">👥</div></div>
+        <div class="kpi-val">21,671</div>
+        <div class="kpi-meta"><span class="badge neu">Unique IDs</span><span class="kpi-sub-txt">All 3 years</span></div>
+      </div>
+      <div class="kpi" style="--kc:var(--gold)">
+        <div class="kpi-stripe"></div>
+        <div class="kpi-top"><div class="kpi-label">CY 2025 Customers</div><div class="kpi-icon">📅</div></div>
+        <div class="kpi-val">846,650</div>
+        <div class="kpi-meta"><span class="badge dn">↓ -0.87%</span><span class="kpi-sub-txt">vs 854,100 (PY)</span></div>
+      </div>
+      <div class="kpi" style="--kc:var(--blue)">
+        <div class="kpi-stripe"></div>
+        <div class="kpi-top"><div class="kpi-label">Total Orders</div><div class="kpi-icon">📦</div></div>
+        <div class="kpi-val">50,000</div>
+        <div class="kpi-meta"><span class="badge neu">Across 4 segments</span></div>
+      </div>
+      <div class="kpi" style="--kc:#8e44ad">
+        <div class="kpi-stripe"></div>
+        <div class="kpi-top"><div class="kpi-label">Avg Revenue/Customer</div><div class="kpi-icon">💰</div></div>
+        <div class="kpi-val">₹12.2K<sub>/cust</sub></div>
+        <div class="kpi-meta"><span class="badge up">↑ Stable</span><span class="kpi-sub-txt">264Cr ÷ 21,671</span></div>
+      </div>
+    </div>
+
+    <!-- SEGMENT CARDS -->
+    <div class="card">
+      <div class="card-head">
+        <div><div class="card-title">Customer Segments — Revenue & Orders</div><div class="card-sub">All 4 segments · CY 2025 vs PY 2024 · from Master_Table[customer_segment]</div></div>
+      </div>
+      <div class="seg-row">
+        <div class="seg-card s1">
+          <div class="seg-label" style="color:var(--seg1)">⭐ Regular</div>
+          <div class="seg-rev">₹67.4Cr</div>
+          <div class="seg-stats">
+            <div class="seg-stat"><div class="seg-stat-l">CY 2025</div><div class="seg-stat-v">₹22.3Cr</div></div>
+            <div class="seg-stat"><div class="seg-stat-l">PY 2024</div><div class="seg-stat-v">₹22.7Cr</div></div>
+            <div class="seg-stat"><div class="seg-stat-l">Orders</div><div class="seg-stat-v">50,000</div></div>
+            <div class="seg-stat"><div class="seg-stat-l">Customers</div><div class="seg-stat-v">650,916</div></div>
+          </div>
+          <div class="seg-indicator"><div class="seg-indicator-fill" style="width:100%;background:var(--seg1)"></div></div>
+        </div>
+        <div class="seg-card s2">
+          <div class="seg-label" style="color:var(--seg2)">😴 Inactive</div>
+          <div class="seg-rev">₹66.4Cr</div>
+          <div class="seg-stats">
+            <div class="seg-stat"><div class="seg-stat-l">CY 2025</div><div class="seg-stat-v">₹22.2Cr</div></div>
+            <div class="seg-stat"><div class="seg-stat-l">PY 2024</div><div class="seg-stat-v">₹21.6Cr</div></div>
+            <div class="seg-stat"><div class="seg-stat-l">Orders</div><div class="seg-stat-v">50,000</div></div>
+            <div class="seg-stat"><div class="seg-stat-l">Customers</div><div class="seg-stat-v">641,084</div></div>
+          </div>
+          <div class="seg-indicator"><div class="seg-indicator-fill" style="width:98.7%;background:var(--seg2)"></div></div>
+        </div>
+        <div class="seg-card s3">
+          <div class="seg-label" style="color:var(--seg3)">🆕 New</div>
+          <div class="seg-rev">₹65.9Cr</div>
+          <div class="seg-stats">
+            <div class="seg-stat"><div class="seg-stat-l">CY 2025</div><div class="seg-stat-v">₹22.0Cr</div></div>
+            <div class="seg-stat"><div class="seg-stat-l">PY 2024</div><div class="seg-stat-v">₹22.2Cr</div></div>
+            <div class="seg-stat"><div class="seg-stat-l">Orders</div><div class="seg-stat-v">50,000</div></div>
+            <div class="seg-stat"><div class="seg-stat-l">Customers</div><div class="seg-stat-v">638,664</div></div>
+          </div>
+          <div class="seg-indicator"><div class="seg-indicator-fill" style="width:97.9%;background:var(--seg3)"></div></div>
+        </div>
+        <div class="seg-card s4">
+          <div class="seg-label" style="color:#8e44ad">💎 Premium</div>
+          <div class="seg-rev">₹64.6Cr</div>
+          <div class="seg-stats">
+            <div class="seg-stat"><div class="seg-stat-l">CY 2025</div><div class="seg-stat-v">₹21.2Cr</div></div>
+            <div class="seg-stat"><div class="seg-stat-l">PY 2024</div><div class="seg-stat-v">₹21.7Cr</div></div>
+            <div class="seg-stat"><div class="seg-stat-l">Orders</div><div class="seg-stat-v">50,000</div></div>
+            <div class="seg-stat"><div class="seg-stat-l">Customers</div><div class="seg-stat-v">626,200</div></div>
+          </div>
+          <div class="seg-indicator"><div class="seg-indicator-fill" style="width:95.9%;background:#8e44ad"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SEGMENT DONUT + TREND -->
+    <div class="g-main">
+      <div class="card">
+        <div class="card-head"><div><div class="card-title">Segment Revenue Trend (Monthly)</div><div class="card-sub">Revenue contribution per segment across 2023–2025</div></div></div>
+        <div class="ch ch-280"><canvas id="segTrend"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><div><div class="card-title">Segment Share</div><div class="card-sub">Revenue split across 4 segments</div></div></div>
+        <div class="donut-wrap">
+          <canvas id="segDonut" style="max-width:195px;max-height:195px"></canvas>
+          <div class="donut-center"><div class="donut-center-val">₹264Cr</div><div class="donut-center-lbl">Total</div></div>
+        </div>
+        <div class="legend">
+          <div class="leg-item"><div class="leg-dot" style="background:var(--seg1)"></div>Regular<div class="leg-val">₹67.4Cr (25.5%)</div></div>
+          <div class="leg-item"><div class="leg-dot" style="background:var(--seg2)"></div>Inactive<div class="leg-val">₹66.4Cr (25.1%)</div></div>
+          <div class="leg-item"><div class="leg-dot" style="background:var(--seg3)"></div>New<div class="leg-val">₹65.9Cr (24.9%)</div></div>
+          <div class="leg-item"><div class="leg-dot" style="background:#8e44ad"></div>Premium<div class="leg-val">₹64.6Cr (24.4%)</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CUSTOMER JOURNEY -->
+    <div class="card">
+      <div class="card-head"><div><div class="card-title">Customer Lifecycle Funnel</div><div class="card-sub">From acquisition to premium — segment health overview</div></div></div>
+      <div class="journey-wrap">
+        <div class="jstep">
+          <div class="jstep-circle">🆕</div>
+          <div class="jstep-label">New Users</div>
+          <div class="jstep-val">638,664</div>
+          <div class="jstep-sub">₹65.9Cr Rev</div>
+        </div>
+        <div class="jstep">
+          <div class="jstep-circle">⭐</div>
+          <div class="jstep-label">Regular</div>
+          <div class="jstep-val">650,916</div>
+          <div class="jstep-sub">₹67.4Cr Rev</div>
+        </div>
+        <div class="jstep">
+          <div class="jstep-circle">💎</div>
+          <div class="jstep-label">Premium</div>
+          <div class="jstep-val">626,200</div>
+          <div class="jstep-sub">₹64.6Cr Rev</div>
+        </div>
+        <div class="jstep">
+          <div class="jstep-circle">😴</div>
+          <div class="jstep-label">Inactive</div>
+          <div class="jstep-val">641,084</div>
+          <div class="jstep-sub">₹66.4Cr Rev</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SEGMENT × CATEGORY + PAYMENT -->
+    <div class="g-main2">
+      <div class="card">
+        <div class="card-head"><div><div class="card-title">Payment Preference by Revenue</div><div class="card-sub">4 payment methods · share of ₹264.4Cr total</div></div></div>
+        <div class="pay-rows">
+          <div class="pay-row">
+            <div class="pay-icon">👛</div>
+            <div class="pay-info"><div class="pay-name">Wallet</div><div class="pay-rev">₹67.4Cr</div></div>
+            <div class="pay-track"><div class="pay-fill" style="width:100%;background:var(--accent)"></div></div>
+            <div class="pay-pct">25.5%</div>
+          </div>
+          <div class="pay-row">
+            <div class="pay-icon">📱</div>
+            <div class="pay-info"><div class="pay-name">UPI</div><div class="pay-rev">₹66.0Cr</div></div>
+            <div class="pay-track"><div class="pay-fill" style="width:97.9%;background:var(--gold)"></div></div>
+            <div class="pay-pct">24.9%</div>
+          </div>
+          <div class="pay-row">
+            <div class="pay-icon">💵</div>
+            <div class="pay-info"><div class="pay-name">Cash</div><div class="pay-rev">₹65.6Cr</div></div>
+            <div class="pay-track"><div class="pay-fill" style="width:97.3%;background:var(--blue)"></div></div>
+            <div class="pay-pct">24.8%</div>
+          </div>
+          <div class="pay-row">
+            <div class="pay-icon">💳</div>
+            <div class="pay-info"><div class="pay-name">Card</div><div class="pay-rev">₹65.4Cr</div></div>
+            <div class="pay-track"><div class="pay-fill" style="width:97.0%;background:#8e44ad"></div></div>
+            <div class="pay-pct">24.7%</div>
+          </div>
+        </div>
+        <div style="margin-top:20px">
+          <div class="ch ch-200"><canvas id="payBar"></canvas></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><div><div class="card-title">Segment × Category Revenue Matrix</div><div class="card-sub">Top category revenue per segment (₹Cr)</div></div></div>
+        <div class="ch ch-280"><canvas id="segCatBar"></canvas></div>
+      </div>
+    </div>
+
+    <!-- TOP CITIES -->
+    <div class="card">
+      <div class="card-head"><div><div class="card-title">Top Cities by Customer Revenue</div><div class="card-sub">Ghaziabad leads · All 250+ cities tracked · CY vs PY comparison</div></div><div class="tag">Top 10 Cities</div></div>
+      <table class="area-tbl" id="cityTable"></table>
+    </div>
+
+    <!-- CITY MINI HEATMAP -->
+    <div class="card">
+      <div class="card-head"><div><div class="card-title">City Revenue Tiles — Top 25</div><div class="card-sub">Color intensity = revenue magnitude (₹Cr)</div></div></div>
+      <div class="city-heat" id="cityHeat"></div>
+    </div>
+
+  </div>
+</main>
+</div>
+
+<script>
+const SEG_COLORS=['#2d6a4f','#c8973a','#2471a3','#8e44ad'];
+Chart.defaults.font.family="'Figtree',sans-serif";Chart.defaults.color='#8a8278';
+const TT={backgroundColor:'#fff',titleColor:'#1a1714',bodyColor:'#4a4540',borderColor:'#e8e3d8',borderWidth:1,padding:12,cornerRadius:10,boxWidth:8,boxHeight:8,boxPadding:4};
+
+/* segment trend */
+const months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+new Chart(document.getElementById('segTrend'),{
+  type:'line',
+  data:{
+    labels:months,
+    datasets:[
+      {label:'Regular',data:[57.2,51.5,59.4,55.8,58.1,54.4,55.4,54.9,52.8,55.1,53.1,54.6],borderColor:'#2d6a4f',backgroundColor:'rgba(45,106,79,.06)',fill:true,tension:.4,borderWidth:2,pointRadius:0},
+      {label:'Inactive',data:[56.4,50.8,58.5,55.0,57.2,53.6,54.5,54.1,52.1,54.3,52.3,53.8],borderColor:'#c8973a',backgroundColor:'rgba(200,151,58,.06)',fill:true,tension:.4,borderWidth:2,pointRadius:0},
+      {label:'New',data:[55.5,49.9,57.6,54.1,56.3,52.7,53.7,53.2,51.2,53.4,51.4,52.9],borderColor:'#2471a3',backgroundColor:'rgba(36,113,163,.06)',fill:true,tension:.4,borderWidth:2,pointRadius:0},
+      {label:'Premium',data:[54.2,48.7,56.4,52.9,55.1,51.5,52.4,52.0,50.0,52.1,50.2,51.7],borderColor:'#8e44ad',backgroundColor:'rgba(142,68,173,.06)',fill:true,tension:.4,borderWidth:2,pointRadius:0},
+    ]
+  },
+  options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{boxWidth:8,font:{size:11},padding:12}},tooltip:{...TT,callbacks:{label:ctx=>`₹${ctx.parsed.y.toFixed(1)}Cr`}}},scales:{x:{grid:{color:'rgba(0,0,0,.04)'},ticks:{font:{size:10}}},y:{grid:{color:'rgba(0,0,0,.04)'},ticks:{callback:v=>`₹${v}`,font:{size:10}}}},interaction:{mode:'index',intersect:false}}
+});
+
+/* segment donut */
+new Chart(document.getElementById('segDonut'),{
+  type:'doughnut',
+  data:{labels:['Regular','Inactive','New','Premium'],datasets:[{data:[67.4,66.4,65.9,64.6],backgroundColor:SEG_COLORS,borderColor:'#fff',borderWidth:4,hoverOffset:8}]},
+  options:{responsive:true,maintainAspectRatio:false,cutout:'72%',plugins:{legend:{display:false},tooltip:{...TT,callbacks:{label:ctx=>`₹${ctx.parsed.toFixed(1)}Cr`}}}}
+});
+
+/* payment bar */
+new Chart(document.getElementById('payBar'),{
+  type:'bar',
+  data:{
+    labels:['Wallet','UPI','Cash','Card'],
+    datasets:[
+      {label:'Regular',data:[17.2,16.9,16.7,16.5],backgroundColor:'#2d6a4f',borderRadius:4,borderSkipped:false},
+      {label:'Inactive',data:[16.9,16.7,16.4,16.2],backgroundColor:'#c8973a',borderRadius:4,borderSkipped:false},
+      {label:'New',data:[16.8,16.5,16.3,16.1],backgroundColor:'#2471a3',borderRadius:4,borderSkipped:false},
+      {label:'Premium',data:[16.5,16.0,15.8,16.6],backgroundColor:'#8e44ad',borderRadius:4,borderSkipped:false},
+    ]
+  },
+  options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{boxWidth:8,font:{size:10},padding:8}},tooltip:{...TT,callbacks:{label:ctx=>`₹${ctx.parsed.y.toFixed(1)}Cr`}}},scales:{x:{grid:{display:false},stacked:true},y:{grid:{color:'rgba(0,0,0,.04)'},stacked:true,ticks:{callback:v=>`₹${v}Cr`,font:{size:10}}}}}
+});
+
+/* segment × category grouped */
+new Chart(document.getElementById('segCatBar'),{
+  type:'bar',
+  data:{
+    labels:['Baby Care','Inst & Frz','Cold Drk','Pet Care','Fruits&Veg','Grocery','Snacks'],
+    datasets:[
+      {label:'Regular',data:[85.6,84.7,74.1,68.1,68.3,56.3,56.0],backgroundColor:'#2d6a4f',borderRadius:{topLeft:4,topRight:4},borderSkipped:false},
+      {label:'Inactive',data:[84.7,83.9,77.4,69.3,65.8,54.5,52.7],backgroundColor:'#c8973a',borderRadius:{topLeft:4,topRight:4},borderSkipped:false},
+      {label:'New',data:[83.0,84.3,75.8,68.4,66.5,53.5,54.2],backgroundColor:'#2471a3',borderRadius:{topLeft:4,topRight:4},borderSkipped:false},
+      {label:'Premium',data:[81.3,82.4,75.6,66.1,66.2,54.0,51.8],backgroundColor:'#8e44ad',borderRadius:{topLeft:4,topRight:4},borderSkipped:false},
+    ]
+  },
+  options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{boxWidth:8,font:{size:10},padding:10}},tooltip:{...TT,callbacks:{label:ctx=>`₹${ctx.parsed.y.toFixed(1)}Cr`}}},scales:{x:{grid:{display:false},ticks:{font:{size:10},maxRotation:30}},y:{grid:{color:'rgba(0,0,0,.04)'},ticks:{callback:v=>`₹${v}Cr`,font:{size:10}}}},interaction:{mode:'index',intersect:false}}
+});
+
+/* city table */
+const cities=[
+  {rank:1,city:'Ghaziabad',rev:17.13,cy:6.48,py:5.36,seg:'Inactive'},
+  {rank:2,city:'Aurangabad',rev:15.11,cy:5.74,py:5.32,seg:'Inactive'},
+  {rank:3,city:'Kharagpur',rev:13.33,cy:3.62,py:5.10,seg:'Premium'},
+  {rank:4,city:'Bhopal',rev:11.49,cy:3.53,py:3.52,seg:'New'},
+  {rank:5,city:'Ichalkaranji',rev:11.20,cy:3.45,py:4.10,seg:'Premium'},
+  {rank:6,city:'Gulbarga',rev:11.06,cy:2.88,py:4.24,seg:'Inactive'},
+  {rank:7,city:'Shimoga',rev:11.03,cy:3.31,py:4.65,seg:'New'},
+  {rank:8,city:'Sri Ganganagar',rev:11.03,cy:3.86,py:3.65,seg:'Regular'},
+  {rank:9,city:'Nagaon',rev:11.01,cy:4.49,py:3.67,seg:'Inactive'},
+  {rank:10,city:'Aizawl',rev:10.87,cy:3.39,py:3.65,seg:'New'},
+];
+const tbl=document.getElementById('cityTable');
+tbl.innerHTML=`<thead><tr><th>#</th><th>City</th><th>Total Rev</th><th>CY 2025</th><th>PY 2024</th><th>YoY</th><th>Top Seg</th></tr></thead><tbody>${
+  cities.map(c=>{
+    const yoy=((c.cy-c.py)/c.py*100).toFixed(1);
+    const up=parseFloat(yoy)>=0;
+    const segColor={Inactive:'var(--gold)',Premium:'#8e44ad',New:'var(--blue)',Regular:'var(--accent)'}[c.seg];
+    return`<tr>
+      <td><span style="font-family:'Instrument Serif',serif;font-size:15px;color:var(--ink3)">${c.rank}</span></td>
+      <td class="city">${c.city}</td>
+      <td>₹${c.rev.toFixed(2)}Cr</td>
+      <td>₹${c.cy.toFixed(2)}Cr</td>
+      <td>₹${c.py.toFixed(2)}Cr</td>
+      <td><span class="badge ${up?'up':'dn'}">${up?'↑':'↓'} ${Math.abs(yoy)}%</span></td>
+      <td><span style="font-size:11px;font-weight:600;color:${segColor}">${c.seg}</span></td>
+    </tr>`;
+  }).join('')
+}</tbody>`;
+
+/* city heat */
+const heatCities=[
+  {n:'Ghaziabad',v:17.1},{n:'Aurangabad',v:15.1},{n:'Kharagpur',v:13.3},{n:'Bhopal',v:11.5},{n:'Ichalkaranji',v:11.2},
+  {n:'Gulbarga',v:11.1},{n:'Shimoga',v:11.0},{n:'Sri Ganganagar',v:11.0},{n:'Nagaon',v:11.0},{n:'Aizawl',v:10.9},
+  {n:'Jabalpur',v:10.9},{n:'Yamunanagar',v:10.8},{n:'Gaya',v:10.8},{n:'Parbhani',v:10.7},{n:'Nanded',v:10.7},
+  {n:'Ongole',v:10.6},{n:'Rajahmundry',v:10.5},{n:'Tinsukia',v:10.4},{n:'Bahraich',v:10.3},{n:'Patna',v:10.3},
+  {n:'Saharanpur',v:10.3},{n:'Dewas',v:10.3},{n:'Thrissur',v:10.3},{n:'Kavali',v:10.3},{n:'Deoghar',v:10.3},
+];
+const maxV=heatCities[0].v;
+const heatEl=document.getElementById('cityHeat');
+heatCities.forEach(c=>{
+  const intensity=c.v/maxV;
+  const bg=`rgba(45,106,79,${(intensity*0.55+0.05).toFixed(2)})`;
+  const col=intensity>0.6?'#fff':'var(--ink)';
+  heatEl.innerHTML+=`<div class="city-cell" style="background:${bg}"><div class="city-name" style="color:${intensity>0.6?'rgba(255,255,255,.7)':'var(--ink3)'}">${c.n}</div><div class="city-rev" style="color:${col}">₹${c.v.toFixed(1)}Cr</div></div>`;
+});
+
+window.addEventListener('load',()=>{document.querySelectorAll('.pay-fill,.seg-indicator-fill').forEach(el=>{const w=el.style.width;el.style.width='0';setTimeout(()=>{el.style.width=w;},300);});});
+</script>
+</body>
+</html>
